@@ -1,12 +1,12 @@
 /* NetWorth Routine — offline shell.
    Bump CACHE whenever index.html or the assets change, so phones pick it up. */
-const CACHE = 'nwr-v1';
+const CACHE = 'nwr-v2';
 const CORE = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './assets/mark-dark.svg',
-  './assets/mark-light.svg',
+  './assets/logo-lockup.svg',
+  './assets/logo-lockup-reverse.svg',
   './assets/icon-192.png',
   './assets/icon-512.png',
   './assets/apple-touch-icon.png',

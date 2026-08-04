@@ -5,16 +5,32 @@ no accounts, no AI calls — your routine data stays in your own browser.
 
 ## The mark
 
-An unbroken ring of 16 segments — the day divided into slots, closed into a loop
-that doesn't break. The bright gold arc is the streak so far. Inside sits a
-rising two-peak zigzag, echoing the NetWorth NN mark: a repeating rhythm that
-climbs. Consistency in the ring, discipline in the climb.
+The NetWorth NN mark and growth arrow, with a flame as the Routine symbol — the
+streak you don't break. Colours are the NetWorth pair: navy `#223870`, gold
+`#B1870F`, gold lifted to `#E3B33F` on dark.
 
-Colours are the NetWorth Digital pair — navy `#223870` and gold `#B1870F`, with
-gold lifted to `#E3B33F` on dark backgrounds.
+Two things were corrected against the supplied `NW Routine - Standard.svg`
+(kept untouched as `assets/logo-original-supplied.svg`):
 
-Assets are generated, not hand-drawn — see `tools/make_brand.py` to change the
-segment count, streak length or colours and rebuild every icon in one go.
+- **The flame was clipped.** Content ran to `y=269.3`; the viewBox stopped at
+  `260.12`, cutting the bottom off.
+- **It hung below the baseline.** Both NN strokes end exactly at `y=253.1`; the
+  flame sagged 16 units past it.
+
+The integration was then tightened: the flame's axis went from 18° to 27° so it
+leans with the diagonal strokes rather than standing upright against them.
+
+Every asset is generated — run `python3 tools/make_brand.py` after changing the
+placement, colours or icon padding, and all the SVGs and PNGs rebuild. It uses
+macOS `qlmanage` and `sips`, so there's nothing to install.
+
+| File | Use |
+|---|---|
+| `logo-lockup.svg` | Full logo, colour, for light backgrounds |
+| `logo-lockup-reverse.svg` | White NN, flame centre knocked out — any dark background |
+| `logo-lockup-2048.png` | Transparent raster for decks, emails, GHL |
+| `flame.svg` / `flame-gold.svg` | Symbol alone |
+| `icon-*.png` | App icons — gold flame knocked out of a navy tile |
 
 ## Running it locally
 
