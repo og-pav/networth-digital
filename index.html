@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#223870" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141b2d" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NetWorth Routine">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="NetWorth Routine — a base daily template that adapts itself each evening.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<title>NetWorth Routine</title>
+<style>
+  /* NetWorth Digital: navy #223870 · gold #B1870F · grey #414042 */
+  :root{
+    --bg:#f4f6fa; --panel:#ffffff; --panel-2:#eef1f7; --line:#dbe0eb;
+    --text:#1b2333; --muted:#5f6b80; --accent:#223870; --accent-soft:#e7ebf6;
+    --gold:#B1870F; --gold-soft:#f6efdc;
+    --danger:#c33d3d; --ok:#1f7a4d;
+    --shadow:0 1px 2px rgba(34,56,112,.07),0 6px 18px rgba(34,56,112,.08);
+    --radius:12px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0c1120; --panel:#141b2d; --panel-2:#1c2438; --line:#28324c;
+      --text:#e9edf6; --muted:#93a0ba; --accent:#E3B33F; --accent-soft:#26314e;
+      --gold:#E3B33F; --gold-soft:#2a2415;
+      --danger:#ef8080; --ok:#4ecb8b;
+      --shadow:0 1px 2px rgba(0,0,0,.45),0 8px 24px rgba(0,0,0,.4);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{cursor:pointer}
+
+  /* ---------- shell ---------- */
+  header{
+    position:sticky; top:0; z-index:40; background:var(--panel);
+    border-bottom:1px solid var(--line); padding:10px 14px calc(10px);
+    padding-top:calc(10px + env(safe-area-inset-top));
+  }
+  .bar{display:flex;align-items:center;gap:10px;max-width:1100px;margin:0 auto}
+  .brand{margin-right:auto;display:flex;gap:9px;align-items:center;min-width:0}
+  .brand img{width:28px;height:28px;display:block;flex:none}
+  .brand .lt{display:block} .brand .dk{display:none}
+  @media (prefers-color-scheme:dark){ .brand .lt{display:none} .brand .dk{display:block} }
+  .wordmark{font-weight:800;letter-spacing:-.015em;line-height:1.1;white-space:nowrap}
+  .wordmark b{font-weight:800}
+  .wordmark i{font-style:normal;color:var(--gold)}
+  .brand small{font-weight:500;color:var(--muted);display:block;font-size:11px;letter-spacing:0}
+  .tabs{display:flex;gap:4px;background:var(--panel-2);padding:3px;border-radius:10px;overflow:auto;max-width:100%}
+  .tabs button{border:0;background:transparent;padding:7px 12px;border-radius:8px;color:var(--muted);font-weight:600;white-space:nowrap}
+  .tabs button[aria-selected="true"]{background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+  @media(max-width:620px){
+    .wordmark{display:none}          /* the mark alone carries it on small screens */
+    .tabs{flex:1;justify-content:space-between}
+    .tabs button{flex:1;text-align:center;padding:7px 4px;font-size:13px}
+  }
+  main{max-width:1100px;margin:0 auto;padding:14px 14px 90px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .spacer{flex:1}
+  h2{font-size:17px;margin:0 0 2px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+
+  .btn{border:1px solid var(--line);background:var(--panel);padding:8px 12px;border-radius:9px;font-weight:600}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+  .btn.sm{padding:5px 9px;font-size:13px;border-radius:8px}
+  .btn.danger{color:var(--danger)}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+  /* ---------- day view ---------- */
+  .daybar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .daybar .date{font-weight:700;font-size:16px}
+  .daybar .date span{display:block;font-weight:500;font-size:12px;color:var(--muted)}
+  .progress{height:6px;background:var(--panel-2);border-radius:99px;overflow:hidden;margin:2px 0 14px}
+  .progress i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));width:0;transition:width .3s}
+
+  .slots{display:grid;gap:12px;grid-template-columns:1fr}
+  @media(min-width:820px){ .slots{grid-template-columns:1fr 1fr} }
+
+  .slot{padding:10px 10px 8px}
+  .slot.drop{outline:2px dashed var(--accent);outline-offset:-3px;background:var(--accent-soft)}
+  .slot h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:2px 4px 8px;display:flex;align-items:center;gap:8px}
+  .slot h3 .time{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;font-size:12px}
+  .items{display:flex;flex-direction:column;gap:6px;min-height:34px}
+  .empty{color:var(--muted);font-size:13px;padding:8px 6px;border:1px dashed var(--line);border-radius:9px;text-align:center}
+
+  .item{
+    display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:10px;
+    background:var(--panel-2);border:1px solid transparent;border-left:4px solid var(--c,#888);
+    touch-action:pan-y; user-select:none;
+  }
+  .item.done{opacity:.5}
+  .item.done .title{text-decoration:line-through}
+  .item.skipped{opacity:.65}
+  .item.skipped .title{text-decoration:line-through;text-decoration-style:wavy}
+  .item .grip{cursor:grab;color:var(--muted);padding:2px 4px;font-size:15px;line-height:1}
+  .item .title{flex:1;min-width:0;font-weight:600;overflow-wrap:anywhere}
+  .item .meta{font-size:12px;color:var(--muted);font-weight:500}
+  .item .tick{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--line);background:var(--panel);display:grid;place-items:center;font-size:13px;padding:0;flex:none}
+  .item .tick.on{background:var(--ok);border-color:var(--ok);color:#fff}
+  .pill{font-size:11px;padding:2px 7px;border-radius:99px;background:var(--panel);border:1px solid var(--line);color:var(--muted);font-weight:600;flex:none}
+  .pill.carry{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+  .drag-ghost{position:fixed;z-index:200;pointer-events:none;opacity:.95;box-shadow:var(--shadow);width:min(420px,86vw)}
+
+  /* ---------- forms ---------- */
+  input[type=text],input[type=time],input[type=number],select,textarea{
+    background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 10px;width:100%;
+  }
+  textarea{min-height:70px;resize:vertical}
+  label.f{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 4px}
+  .grid{display:grid;gap:8px}
+  @media(min-width:640px){ .grid.c2{grid-template-columns:1fr 1fr} .grid.c3{grid-template-columns:2fr 1fr 1fr} }
+
+  .swatch{width:16px;height:16px;border-radius:5px;flex:none;border:1px solid rgba(0,0,0,.15)}
+  .catrow{display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line)}
+  .catrow:last-child{border-bottom:0}
+
+  .tmplslot{padding:10px;margin-bottom:10px}
+  .tmplslot .hd{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .tmplslot .hd input[type=text]{font-weight:700}
+  .tmplslot .hd input[type=time]{width:132px;flex:none}
+
+  .note{background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;font-size:13px}
+  .stat{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+  .stat div{background:var(--panel-2);border-radius:10px;padding:8px 12px;font-weight:700}
+  .stat span{display:block;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+
+  .hist{padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .bars{display:flex;gap:3px;align-items:flex-end;height:26px}
+  .bars i{width:7px;background:var(--ok);border-radius:2px;display:block}
+
+  footer{max-width:1100px;margin:0 auto;padding:0 14px 30px;color:var(--muted);font-size:12px}
+  .hide{display:none !important}
+  dialog{border:0;border-radius:14px;padding:0;background:var(--panel);color:var(--text);box-shadow:var(--shadow);width:min(460px,92vw)}
+  dialog::backdrop{background:rgba(0,0,0,.45)}
+  .dlg{padding:16px}
+  .dlg h3{margin:0 0 12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="brand">
+      <img class="lt" src="assets/mark-light.svg" alt="" width="28" height="28">
+      <img class="dk" src="assets/mark-dark.svg" alt="" width="28" height="28">
+      <span class="wordmark"><b>NetWorth</b> <i>Routine</i>
+        <small id="storeWarn" class="hide">running without saved storage</small></span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="today" aria-selected="true">Today</button>
+      <button role="tab" data-tab="review" aria-selected="false">End of day</button>
+      <button role="tab" data-tab="template" aria-selected="false">Template</button>
+      <button role="tab" data-tab="history" aria-selected="false">History</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ============ TODAY ============ -->
+  <section id="tab-today">
+    <div class="daybar">
+      <button class="btn sm" id="prevDay">‹</button>
+      <div class="date" id="dayLabel">—<span id="dayMeta"></span></div>
+      <div class="spacer"></div>
+      <button class="btn sm" id="todayBtn">Today</button>
+      <button class="btn sm" id="nextDay">›</button>
+    </div>
+    <div class="progress"><i id="prog"></i></div>
+
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn sm" id="addToDay">+ Add activity to this day</button>
+      <button class="btn sm ghost" id="resetDay">Reset day from template</button>
+    </div>
+
+    <div class="slots" id="daySlots"></div>
+  </section>
+
+  <!-- ============ REVIEW ============ -->
+  <section id="tab-review" class="hide">
+    <h2>End of day review</h2>
+    <p class="sub" id="reviewFor"></p>
+
+    <div class="stat" id="reviewStats"></div>
+
+    <div class="card" style="padding:12px;margin-bottom:14px">
+      <label class="f">Anything left undone — carry it to tomorrow?</label>
+      <div id="carryList"></div>
+    </div>
+
+    <div class="card" style="padding:12px;margin-bottom:14px">
+      <label class="f">Add something new for tomorrow</label>
+      <div class="grid c3">
+        <input type="text" id="newTitle" placeholder="e.g. Quote follow-ups">
+        <select id="newSlot"></select>
+        <select id="newCat"></select>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <select id="newRec" style="width:auto">
+          <option value="once">Just tomorrow</option>
+          <option value="daily">Every day (add to template)</option>
+          <option value="weekdays">Weekdays (add to template)</option>
+          <option value="weekends">Weekends (add to template)</option>
+        </select>
+        <button class="btn sm" id="addTomorrow">Add</button>
+      </div>
+      <div id="pendingAdds" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+
+    <div class="card" style="padding:12px;margin-bottom:14px">
+      <label class="f">Notes on today (optional)</label>
+      <textarea id="dayNote" placeholder="What worked, what didn't…"></textarea>
+    </div>
+
+    <div class="row">
+      <button class="btn primary" id="genTomorrow">Generate tomorrow's plan →</button>
+      <span class="sub" style="margin:0" id="genHint"></span>
+    </div>
+  </section>
+
+  <!-- ============ TEMPLATE ============ -->
+  <section id="tab-template" class="hide">
+    <h2>Base template</h2>
+    <p class="sub">Your default day. Each new day is built from this, then adapted by what you did yesterday.</p>
+
+    <div id="tmplSlots"></div>
+
+    <div class="row" style="margin:10px 0 22px">
+      <button class="btn sm" id="addSlot">+ Add slot</button>
+    </div>
+
+    <h2>Colour categories</h2>
+    <p class="sub">Colours are shared across every day and every view.</p>
+    <div class="card" style="padding:6px 12px" id="cats"></div>
+    <div class="row" style="margin:10px 0 22px">
+      <button class="btn sm" id="addCat">+ Add category</button>
+    </div>
+
+    <h2>Backup</h2>
+    <p class="sub">Everything lives in this browser only. Export now and then.</p>
+    <div class="row">
+      <button class="btn sm" id="exportBtn">Export backup (.json)</button>
+      <button class="btn sm" id="importBtn">Import backup</button>
+      <input type="file" id="importFile" accept="application/json" class="hide">
+      <button class="btn sm danger ghost" id="wipeBtn">Erase everything</button>
+    </div>
+  </section>
+
+  <!-- ============ HISTORY ============ -->
+  <section id="tab-history" class="hide">
+    <h2>History</h2>
+    <p class="sub">Every generated day, newest first.</p>
+    <div id="histList"></div>
+  </section>
+</main>
+
+<footer>NetWorth Routine · saved locally in this browser · <span id="ver"></span></footer>
+
+<dialog id="itemDlg"><form method="dialog" class="dlg">
+  <h3 id="dlgTitle">Add activity</h3>
+  <div class="grid">
+    <div><label class="f">Activity</label><input type="text" id="dTitle" required></div>
+    <div class="grid c2">
+      <div><label class="f">Slot</label><select id="dSlot"></select></div>
+      <div><label class="f">Category</label><select id="dCat"></select></div>
+    </div>
+    <div class="grid c2">
+      <div><label class="f">Minutes (optional)</label><input type="number" id="dMin" min="0" step="5" placeholder="30"></div>
+      <div><label class="f">Repeats</label><select id="dRec">
+        <option value="once">Just this day</option>
+        <option value="daily">Every day</option>
+        <option value="weekdays">Weekdays</option>
+        <option value="weekends">Weekends</option>
+      </select></div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn danger ghost sm hide" id="dDelete" value="delete" type="submit" formnovalidate>Delete</button>
+    <div class="spacer"></div>
+    <button class="btn sm" value="cancel" formnovalidate>Cancel</button>
+    <button class="btn primary sm" id="dSave" value="save">Save</button>
+  </div>
+</form></dialog>
+
+<script>
+"use strict";
+const VER = "v1.1";
+const KEY = "daily-routine-v1";
+const uid = () => Math.random().toString(36).slice(2,9);
+
+/* ---------------- storage ---------------- */
+let memoryOnly = false;
+function save(){
+  if(memoryOnly) return;
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ memoryOnly = true; document.getElementById('storeWarn').classList.remove('hide'); }
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){ memoryOnly = true; document.getElementById('storeWarn').classList.remove('hide'); }
+  return null;
+}
+
+/* ---------------- dates ---------------- */
+const pad = n => String(n).padStart(2,'0');
+const keyOf = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parseKey = k => { const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); };
+const todayKey = () => keyOf(new Date());
+const shift = (k,n) => { const d=parseKey(k); d.setDate(d.getDate()+n); return keyOf(d); };
+const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function pretty(k){ const d=parseKey(k); return DOW[d.getDay()]+' '+d.getDate()+' '+MON[d.getMonth()]; }
+function isWeekend(k){ const g=parseKey(k).getDay(); return g===0||g===6; }
+function recurs(rec,k){
+  if(rec==='daily') return true;
+  if(rec==='weekdays') return !isWeekend(k);
+  if(rec==='weekends') return isWeekend(k);
+  return false;
+}
+
+/* ---------------- default state ---------------- */
+function seed(){
+  const cats = [
+    // navy and gold, lifted just enough to stay visible on the dark navy panels
+    {id:'c1',name:'Deep work',colour:'#4570D8'},
+    {id:'c2',name:'Health',colour:'#1f9d64'},
+    {id:'c3',name:'Admin',colour:'#D2A01C'},
+    {id:'c4',name:'Personal',colour:'#7c5cd6'},
+    {id:'c5',name:'Learning',colour:'#0e8f96'},
+    {id:'c6',name:'Rest',colour:'#6b7688'}
+  ];
+  const slots = [
+    {id:'s1',name:'Early morning',time:'06:00'},
+    {id:'s2',name:'Morning',time:'08:30'},
+    {id:'s3',name:'Midday',time:'12:00'},
+    {id:'s4',name:'Afternoon',time:'14:00'},
+    {id:'s5',name:'Evening',time:'18:00'},
+    {id:'s6',name:'Wind down',time:'21:00'}
+  ];
+  const A = (slotId,title,cat,rec,min)=>({id:uid(),slotId,title,cat,rec,min:min||null});
+  const acts = [
+    A('s1','Walk / gym','c2','daily',45),
+    A('s2','Plan the day','c3','weekdays',10),
+    A('s2','Focus block — priority job','c1','weekdays',90),
+    A('s3','Lunch + reset','c6','daily',45),
+    A('s4','Calls & follow-ups','c3','weekdays',60),
+    A('s5','Dinner','c4','daily',null),
+    A('s6','Read','c5','daily',20)
+  ];
+  return {
+    version:1,
+    cats, template:{slots, acts},
+    days:{}, note:{}, pendingAdds:{}, carry:{},
+    current: todayKey()
+  };
+}
+
+let S = load() || seed();
+if(!S.pendingAdds) S.pendingAdds = {};
+if(!S.carry) S.carry = {};
+if(!S.note) S.note = {};
+
+const catById = id => S.cats.find(c=>c.id===id) || {name:'—',colour:'#8a94a3'};
+const slotById = id => S.template.slots.find(s=>s.id===id);
+
+/* ---------------- day building ---------------- */
+// Build a fresh day purely from the template (used for a first day, or a manual reset).
+function buildFromTemplate(k){
+  const items = S.template.acts
+    .filter(a => recurs(a.rec,k))
+    .map(a => ({id:uid(), src:a.id, slotId:a.slotId, title:a.title, cat:a.cat,
+                min:a.min, rec:a.rec, status:'pending', carried:0}));
+  return {date:k, items, generated:'template'};
+}
+
+// A specific one-off task chases you until it's done; a missed habit just comes
+// back on its normal schedule rather than piling up.
+const carryDefault = it => it.rec === 'once';
+const willCarry = (it,k) => {
+  const f = (S.carry[k] || {})[it.id];
+  return f === undefined ? carryDefault(it) : f;
+};
+
+// The rules engine: tomorrow = template for that weekday + carried-over items + explicit adds.
+function buildNextDay(fromKey){
+  const k = shift(fromKey,1);
+  const day = buildFromTemplate(k);
+  const prev = S.days[fromKey];
+
+  if(prev){
+    prev.items.forEach(it=>{
+      if(it.status === 'done') return;        // finished — nothing to carry
+      if(recurs(it.rec,k)) return;            // already coming back via the template
+      if(!willCarry(it, fromKey)) return;     // default off for habits, or dropped in the review
+      day.items.push({id:uid(), src:null, slotId:it.slotId, title:it.title, cat:it.cat,
+                      min:it.min, rec:'once', status:'pending', carried:(it.carried||0)+1});
+    });
+  }
+
+  (S.pendingAdds[fromKey]||[]).forEach(a=>{
+    if(a.rec === 'once'){
+      day.items.push({id:uid(), src:null, slotId:a.slotId, title:a.title, cat:a.cat,
+                      min:null, rec:'once', status:'pending', carried:0});
+    }
+  });
+
+  day.generated = 'rolled';
+  return day;
+}
+
+function ensureDay(k){
+  if(!S.days[k]){
+    const prev = S.days[shift(k,-1)];
+    S.days[k] = prev ? buildNextDay(shift(k,-1)) : buildFromTemplate(k);
+    save();
+  }
+  return S.days[k];
+}
+
+/* ---------------- tabs ---------------- */
+const tabs = ['today','review','template','history'];
+function showTab(t){
+  tabs.forEach(x=>{
+    document.getElementById('tab-'+x).classList.toggle('hide', x!==t);
+    const b = document.querySelector(`[data-tab="${x}"]`);
+    b.setAttribute('aria-selected', String(x===t));
+  });
+  if(t==='today') renderDay();
+  if(t==='review') renderReview();
+  if(t==='template') renderTemplate();
+  if(t==='history') renderHistory();
+}
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+
+/* ---------------- TODAY ---------------- */
+function renderDay(){
+  const k = S.current;
+  const day = ensureDay(k);
+  document.getElementById('dayLabel').firstChild.nodeValue = pretty(k);
+  const gen = day.generated==='rolled' ? 'adapted from the day before' : 'built from template';
+  document.getElementById('dayMeta').textContent =
+    (k===todayKey() ? 'Today · ' : '') + gen;
+
+  const done = day.items.filter(i=>i.status==='done').length;
+  const tot = day.items.length || 1;
+  document.getElementById('prog').style.width = Math.round(done/tot*100)+'%';
+
+  const wrap = document.getElementById('daySlots');
+  wrap.innerHTML = '';
+  S.template.slots.forEach(sl=>{
+    const box = document.createElement('div');
+    box.className = 'card slot';
+    box.dataset.slot = sl.id;
+    box.innerHTML = `<h3>${esc(sl.name)}<span class="time">${sl.time||''}</span></h3>`;
+    const list = document.createElement('div');
+    list.className = 'items';
+    const items = day.items.filter(i=>i.slotId===sl.id);
+    if(!items.length){
+      const e = document.createElement('div'); e.className='empty'; e.textContent='—';
+      list.appendChild(e);
+    }
+    items.forEach(it=>list.appendChild(itemEl(it, day)));
+    box.appendChild(list);
+    wrap.appendChild(box);
+  });
+}
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function itemEl(it, day){
+  const c = catById(it.cat);
+  const el = document.createElement('div');
+  el.className = 'item' + (it.status==='done'?' done':'') + (it.status==='skipped'?' skipped':'');
+  el.style.setProperty('--c', c.colour);
+  el.dataset.id = it.id;
+  el.innerHTML = `
+    <span class="grip" title="Drag to move">⠿</span>
+    <button class="tick ${it.status==='done'?'on':''}" title="Mark done">${it.status==='done'?'✓':''}</button>
+    <span class="title">${esc(it.title)}</span>
+    ${it.carried ? `<span class="pill carry">carried ×${it.carried}</span>`:''}
+    ${it.rec!=='once' ? `<span class="pill">${it.rec}</span>`:''}
+    ${it.min ? `<span class="meta">${it.min}m</span>`:''}
+  `;
+  el.querySelector('.tick').onclick = e=>{
+    e.stopPropagation();
+    it.status = it.status==='done' ? 'pending' : 'done';
+    save(); renderDay();
+  };
+  el.onclick = ()=> openItemDialog(it, day);
+  makeDraggable(el, it, day);
+  return el;
+}
+
+document.getElementById('prevDay').onclick = ()=>{ S.current = shift(S.current,-1); save(); renderDay(); };
+document.getElementById('nextDay').onclick = ()=>{ S.current = shift(S.current, 1); save(); renderDay(); };
+document.getElementById('todayBtn').onclick = ()=>{ S.current = todayKey(); save(); renderDay(); };
+document.getElementById('addToDay').onclick = ()=> openItemDialog(null, ensureDay(S.current));
+document.getElementById('resetDay').onclick = ()=>{
+  if(!confirm('Rebuild this day from the base template? Anything added or carried over for this day is lost.')) return;
+  S.days[S.current] = buildFromTemplate(S.current); save(); renderDay();
+};
+
+/* ---------------- drag & drop (pointer based: works on touch + mouse) ---------------- */
+function makeDraggable(el, it, day){
+  const grip = el.querySelector('.grip');
+  let ghost=null, startX=0, startY=0, dragging=false, lastSlot=null;
+
+  const down = ev=>{
+    if(ev.button !== undefined && ev.button !== 0) return;
+    ev.preventDefault();
+    startX = ev.clientX; startY = ev.clientY;
+    try{ grip.setPointerCapture(ev.pointerId); }catch(e){}
+    const move = e=>{
+      if(!dragging){
+        if(Math.hypot(e.clientX-startX, e.clientY-startY) < 5) return;
+        dragging = true;
+        ghost = el.cloneNode(true);
+        ghost.classList.add('drag-ghost');
+        document.body.appendChild(ghost);
+        el.style.opacity = '.3';
+      }
+      ghost.style.left = (e.clientX - 40)+'px';
+      ghost.style.top  = (e.clientY - 18)+'px';
+      ghost.style.display='none';
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+      ghost.style.display='';
+      const slot = under && under.closest ? under.closest('.slot') : null;
+      if(lastSlot && lastSlot!==slot) lastSlot.classList.remove('drop');
+      if(slot){ slot.classList.add('drop'); lastSlot = slot; }
+    };
+    const up = e=>{
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', up);
+      grip.removeEventListener('pointercancel', up);
+      if(ghost){ ghost.remove(); ghost=null; }
+      el.style.opacity = '';
+      if(lastSlot) lastSlot.classList.remove('drop');
+      if(dragging && lastSlot){
+        const target = lastSlot.dataset.slot;
+        if(target && target !== it.slotId){
+          it.slotId = target;
+          // move to end of that slot's ordering
+          day.items = day.items.filter(x=>x.id!==it.id).concat([it]);
+          save();
+        }
+        renderDay();
+      }
+      dragging=false; lastSlot=null;
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+    grip.addEventListener('pointercancel', up);
+  };
+  grip.addEventListener('pointerdown', down);
+  grip.addEventListener('click', e=>e.stopPropagation());
+}
+
+/* ---------------- item dialog ---------------- */
+const dlg = document.getElementById('itemDlg');
+let dlgCtx = null;
+function fillSelect(sel, opts, val){
+  sel.innerHTML = opts.map(o=>`<option value="${o.v}">${esc(o.t)}</option>`).join('');
+  if(val) sel.value = val;
+}
+const slotOpts = () => S.template.slots.map(s=>({v:s.id,t:s.name}));
+const catOpts  = () => S.cats.map(c=>({v:c.id,t:c.name}));
+
+function openItemDialog(it, day, mode){
+  dlgCtx = {it, day, mode: mode || (day?'day':'template')};
+  document.getElementById('dlgTitle').textContent = it ? 'Edit activity' : 'Add activity';
+  fillSelect(document.getElementById('dSlot'), slotOpts(), it?it.slotId:S.template.slots[0].id);
+  fillSelect(document.getElementById('dCat'),  catOpts(),  it?it.cat:S.cats[0].id);
+  document.getElementById('dTitle').value = it?it.title:'';
+  document.getElementById('dMin').value = it&&it.min?it.min:'';
+  document.getElementById('dRec').value = it?it.rec:'once';
+  document.getElementById('dDelete').classList.toggle('hide', !it);
+  dlg.showModal();
+}
+dlg.addEventListener('close', ()=>{
+  const v = dlg.returnValue;
+  if(v==='cancel' || !dlgCtx) { dlgCtx=null; return; }
+  const {it, day, mode} = dlgCtx;
+  const title = document.getElementById('dTitle').value.trim();
+  const slotId = document.getElementById('dSlot').value;
+  const cat = document.getElementById('dCat').value;
+  const min = parseInt(document.getElementById('dMin').value,10) || null;
+  const rec = document.getElementById('dRec').value;
+
+  if(mode === 'template'){
+    if(v==='delete'){ S.template.acts = S.template.acts.filter(a=>a.id!==it.id); }
+    else if(it){ Object.assign(it,{title,slotId,cat,min,rec}); }
+    else if(title){ S.template.acts.push({id:uid(),slotId,title,cat,rec,min}); }
+    save(); renderTemplate();
+  } else {
+    if(v==='delete'){ day.items = day.items.filter(x=>x.id!==it.id); }
+    else if(it){ Object.assign(it,{title,slotId,cat,min,rec}); }
+    else if(title){ day.items.push({id:uid(),src:null,slotId,title,cat,min,rec,status:'pending',carried:0}); }
+    save(); renderDay();
+  }
+  dlgCtx = null;
+});
+
+/* ---------------- REVIEW ---------------- */
+function renderReview(){
+  const k = S.current;
+  const day = ensureDay(k);
+  document.getElementById('reviewFor').textContent =
+    `Reviewing ${pretty(k)} — tomorrow's plan will be built from this.`;
+
+  const done = day.items.filter(i=>i.status==='done').length;
+  const left = day.items.length - done;
+  document.getElementById('reviewStats').innerHTML =
+    `<div>${done}<span>done</span></div><div>${left}<span>not done</span></div>
+     <div>${day.items.length}<span>total</span></div>`;
+
+  const flags = S.carry[k] = S.carry[k] || {};
+  const cl = document.getElementById('carryList');
+  const undone = day.items.filter(i=>i.status!=='done');
+  if(!undone.length){
+    cl.innerHTML = `<div class="sub" style="margin:0">Everything's ticked off. Nothing to carry.</div>`;
+  } else {
+    cl.innerHTML = '';
+    undone.forEach(it=>{
+      const auto = recurs(it.rec, shift(k,1));
+      const row = document.createElement('label');
+      row.className = 'catrow';
+      const on = willCarry(it, k);
+      row.innerHTML = `
+        <input type="checkbox" ${on?'checked':''} ${auto?'disabled':''} style="width:auto">
+        <span class="swatch" style="background:${catById(it.cat).colour}"></span>
+        <span style="flex:1">${esc(it.title)}</span>
+        <span class="pill">${auto ? 'returns anyway ('+it.rec+')' : slotById(it.slotId)?.name || ''}</span>`;
+      row.querySelector('input').onchange = e=>{ flags[it.id] = e.target.checked; save(); };
+      cl.appendChild(row);
+    });
+  }
+
+  fillSelect(document.getElementById('newSlot'), slotOpts());
+  fillSelect(document.getElementById('newCat'), catOpts());
+  document.getElementById('dayNote').value = S.note[k] || '';
+  renderPendingAdds();
+  document.getElementById('genHint').textContent =
+    S.days[shift(k,1)] ? 'Tomorrow already exists — this will rebuild it.' : '';
+}
+
+function renderPendingAdds(){
+  const k = S.current;
+  const list = S.pendingAdds[k] || [];
+  const box = document.getElementById('pendingAdds');
+  box.innerHTML = '';
+  list.forEach((a,i)=>{
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.style.setProperty('--c', catById(a.cat).colour);
+    el.innerHTML = `<span class="title">${esc(a.title)}</span>
+      <span class="pill">${esc(slotById(a.slotId)?.name||'')}</span>
+      <span class="pill">${a.rec==='once'?'tomorrow only':a.rec+' · template'}</span>
+      <button class="btn sm ghost danger">✕</button>`;
+    el.querySelector('button').onclick = ()=>{
+      if(a.rec !== 'once' && a.tmplId) S.template.acts = S.template.acts.filter(x=>x.id!==a.tmplId);
+      list.splice(i,1); save(); renderPendingAdds();
+    };
+    box.appendChild(el);
+  });
+}
+
+document.getElementById('addTomorrow').onclick = ()=>{
+  const k = S.current;
+  const title = document.getElementById('newTitle').value.trim();
+  if(!title) return;
+  const a = {
+    title,
+    slotId: document.getElementById('newSlot').value,
+    cat: document.getElementById('newCat').value,
+    rec: document.getElementById('newRec').value
+  };
+  if(a.rec !== 'once'){
+    a.tmplId = uid();
+    S.template.acts.push({id:a.tmplId, slotId:a.slotId, title:a.title, cat:a.cat, rec:a.rec, min:null});
+  }
+  (S.pendingAdds[k] = S.pendingAdds[k] || []).push(a);
+  document.getElementById('newTitle').value = '';
+  save(); renderPendingAdds();
+};
+document.getElementById('dayNote').oninput = e=>{ S.note[S.current] = e.target.value; save(); };
+
+document.getElementById('genTomorrow').onclick = ()=>{
+  const k = S.current, nk = shift(k,1);
+  if(S.days[nk] && !confirm(`${pretty(nk)} already has a plan. Rebuild it from today?`)) return;
+  S.days[nk] = buildNextDay(k);
+  S.days[k].reviewed = true;
+  S.current = nk;
+  save();
+  showTab('today');
+};
+
+/* ---------------- TEMPLATE ---------------- */
+function renderTemplate(){
+  const wrap = document.getElementById('tmplSlots');
+  wrap.innerHTML = '';
+  S.template.slots.forEach((sl,idx)=>{
+    const box = document.createElement('div');
+    box.className = 'card tmplslot';
+    const hd = document.createElement('div');
+    hd.className = 'hd';
+    hd.innerHTML = `
+      <input type="text" value="${esc(sl.name)}" style="flex:1">
+      <input type="time" value="${sl.time||''}">
+      <button class="btn sm ghost" title="Move up" ${idx===0?'disabled':''}>↑</button>
+      <button class="btn sm ghost" title="Move down" ${idx===S.template.slots.length-1?'disabled':''}>↓</button>
+      <button class="btn sm ghost danger" title="Delete slot">✕</button>`;
+    const [nameI, timeI, up, down, del] = hd.querySelectorAll('input,button');
+    nameI.oninput = e=>{ sl.name = e.target.value; save(); };
+    timeI.oninput = e=>{ sl.time = e.target.value; save(); };
+    up.onclick = ()=>{ const a=S.template.slots; [a[idx-1],a[idx]]=[a[idx],a[idx-1]]; save(); renderTemplate(); };
+    down.onclick = ()=>{ const a=S.template.slots; [a[idx+1],a[idx]]=[a[idx],a[idx+1]]; save(); renderTemplate(); };
+    del.onclick = ()=>{
+      if(S.template.slots.length<2) return alert('Keep at least one slot.');
+      if(!confirm(`Delete "${sl.name}" and its activities from the template?`)) return;
+      S.template.slots = S.template.slots.filter(x=>x.id!==sl.id);
+      S.template.acts = S.template.acts.filter(a=>a.slotId!==sl.id);
+      save(); renderTemplate();
+    };
+    box.appendChild(hd);
+
+    const list = document.createElement('div');
+    list.className = 'items';
+    const acts = S.template.acts.filter(a=>a.slotId===sl.id);
+    if(!acts.length) list.innerHTML = `<div class="empty">nothing scheduled</div>`;
+    acts.forEach(a=>{
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.style.setProperty('--c', catById(a.cat).colour);
+      el.innerHTML = `<span class="title">${esc(a.title)}</span>
+        <span class="pill">${a.rec==='once'?'manual':a.rec}</span>
+        ${a.min?`<span class="meta">${a.min}m</span>`:''}`;
+      el.onclick = ()=> openItemDialog(a, null, 'template');
+      list.appendChild(el);
+    });
+    box.appendChild(list);
+
+    const add = document.createElement('button');
+    add.className = 'btn sm ghost';
+    add.textContent = '+ activity';
+    add.style.marginTop = '6px';
+    add.onclick = ()=>{
+      openItemDialog(null, null, 'template');
+      document.getElementById('dSlot').value = sl.id;
+      document.getElementById('dRec').value = 'daily';
+    };
+    box.appendChild(add);
+    wrap.appendChild(box);
+  });
+
+  const cw = document.getElementById('cats');
+  cw.innerHTML = '';
+  S.cats.forEach((c,i)=>{
+    const row = document.createElement('div');
+    row.className = 'catrow';
+    row.innerHTML = `<input type="color" value="${c.colour}" style="width:34px;height:28px;padding:0;border:0;background:none">
+      <input type="text" value="${esc(c.name)}" style="flex:1">
+      <button class="btn sm ghost danger">✕</button>`;
+    const [col, nm, del] = row.querySelectorAll('input,button');
+    col.oninput = e=>{ c.colour = e.target.value; save(); };
+    nm.oninput = e=>{ c.name = e.target.value; save(); };
+    del.onclick = ()=>{
+      if(S.cats.length<2) return;
+      if(!confirm(`Delete category "${c.name}"? Activities using it fall back to the first category.`)) return;
+      S.cats.splice(i,1);
+      const f = S.cats[0].id;
+      S.template.acts.forEach(a=>{ if(!S.cats.some(x=>x.id===a.cat)) a.cat=f; });
+      Object.values(S.days).forEach(d=>d.items.forEach(it=>{ if(!S.cats.some(x=>x.id===it.cat)) it.cat=f; }));
+      save(); renderTemplate();
+    };
+    cw.appendChild(row);
+  });
+}
+
+document.getElementById('addSlot').onclick = ()=>{
+  S.template.slots.push({id:uid(), name:'New slot', time:''});
+  save(); renderTemplate();
+};
+document.getElementById('addCat').onclick = ()=>{
+  S.cats.push({id:uid(), name:'New category', colour:'#6b7280'});
+  save(); renderTemplate();
+};
+
+/* ---------------- HISTORY ---------------- */
+function renderHistory(){
+  const keys = Object.keys(S.days).sort().reverse();
+  const box = document.getElementById('histList');
+  if(!keys.length){ box.innerHTML = `<div class="sub">Nothing yet.</div>`; return; }
+  box.innerHTML = '';
+  keys.forEach(k=>{
+    const d = S.days[k];
+    const done = d.items.filter(i=>i.status==='done').length;
+    const pct = d.items.length ? Math.round(done/d.items.length*100) : 0;
+    const el = document.createElement('div');
+    el.className = 'card hist';
+    el.innerHTML = `<div style="font-weight:700;min-width:130px">${pretty(k)}
+        <span style="display:block;font-weight:500;font-size:12px;color:var(--muted)">${d.generated==='rolled'?'adapted':'from template'}</span></div>
+      <div class="bars">${d.items.map(i=>`<i style="height:${i.status==='done'?26:9}px;background:${i.status==='done'?catById(i.cat).colour:'var(--line)'}"></i>`).join('')}</div>
+      <div class="spacer"></div>
+      <div style="font-weight:700">${done}/${d.items.length}<span style="display:block;font-size:11px;color:var(--muted);font-weight:600">${pct}%</span></div>
+      <button class="btn sm">Open</button>`;
+    el.querySelector('button').onclick = ()=>{ S.current = k; save(); showTab('today'); };
+    if(S.note[k]){
+      const n = document.createElement('div');
+      n.style.cssText='flex-basis:100%;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:8px';
+      n.textContent = S.note[k];
+      el.appendChild(n);
+    }
+    box.appendChild(el);
+  });
+}
+
+/* ---------------- backup ---------------- */
+document.getElementById('exportBtn').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'daily-routine-'+todayKey()+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+};
+document.getElementById('importBtn').onclick = ()=> document.getElementById('importFile').click();
+document.getElementById('importFile').onchange = e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const d = JSON.parse(r.result);
+      if(!d.template || !d.cats) throw new Error('not a routine backup');
+      S = d; S.pendingAdds = S.pendingAdds||{}; S.carry = S.carry||{}; S.note = S.note||{};
+      save(); showTab('today');
+      alert('Backup restored.');
+    }catch(err){ alert('Could not read that file: '+err.message); }
+  };
+  r.readAsText(f);
+};
+document.getElementById('wipeBtn').onclick = ()=>{
+  if(!confirm('Erase the template, every day and all history? This cannot be undone.')) return;
+  S = seed(); save(); showTab('today');
+};
+
+/* ---------------- go ---------------- */
+// Offline support. Only registers over https or localhost — a plain file://
+// or LAN http address just skips it and the app still works online.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+document.getElementById('ver').textContent = VER;
+if(!S.days[todayKey()] && Object.keys(S.days).length===0) S.current = todayKey();
+showTab('today');
+save();
+</script>
+</body>
+</html>
