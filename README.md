@@ -96,3 +96,32 @@ Override any of it with the tick boxes in the review before hitting
   other device. Clearing browser data wipes everything, so do this occasionally.
 - Categories and their colours are edited on the Template tab and apply
   everywhere.
+
+## The Mac app
+
+`dist/NetWorth Routine.app` — a real macOS app: own dock icon, own window, no
+browser, works with no internet and no server running.
+
+```bash
+./desktop/build.sh
+cp -R "dist/NetWorth Routine.app" ~/Applications/
+```
+
+Re-run both lines after editing `index.html` or `assets/` — the bundle carries
+its own copy of the web files.
+
+It's a WKWebView wrapper (`desktop/main.m`, ~200 lines, no dependencies). Two
+things worth knowing about how it's built:
+
+- The page is served over a custom `nwroutine://` scheme, **not** `file://`.
+  WebKit gives `file://` pages an opaque origin and denies them localStorage,
+  which would throw the whole routine away on every launch. The custom scheme
+  gets a real origin, so data persists in
+  `~/Library/WebKit/com.networthdigital.routine/`.
+- It's Objective-C, not Swift, because this Mac's Command Line Tools ship a
+  Swift compiler that disagrees with its own SDK and can't build `import WebKit`.
+  Clang is unaffected. If the toolchain is ever repaired, nothing here needs to
+  change.
+
+The Mac app and the phone keep **separate** data. Use Export/Import backup on the
+Template tab to move a snapshot between them.
