@@ -1,2 +1,5 @@
 .DS_Store
 dist/
+
+# Never publish: contains client names and live Google Meet join links
+calendar.json

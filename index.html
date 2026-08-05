@@ -116,6 +116,21 @@
   .pill.carry{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
   .drag-ghost{position:fixed;z-index:200;pointer-events:none;opacity:.95;box-shadow:var(--shadow);width:min(420px,86vw)}
 
+  /* ---------- calendar rail ---------- */
+  .daywrap{display:grid;gap:12px;grid-template-columns:1fr;align-items:start}
+  @media(min-width:1000px){ .daywrap{grid-template-columns:minmax(0,1fr) 300px} }
+  .calrail{padding:10px}
+  .calrail h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:2px 4px 8px;display:flex;gap:8px;align-items:center}
+  .calrail h3 .tot{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:600;font-size:12px}
+  .cev{display:flex;gap:8px;align-items:center;padding:8px 9px;border-radius:10px;background:var(--panel-2);border-left:4px solid var(--c,#888);margin-bottom:6px}
+  .cev .tm{font-weight:700;font-size:12px;white-space:nowrap;min-width:64px}
+  .cev .tm span{display:block;font-weight:500;color:var(--muted)}
+  .cev .ti{flex:1;min-width:0;font-weight:600;font-size:13px;overflow-wrap:anywhere}
+  .cev .ti small{display:block;color:var(--muted);font-weight:600;font-size:11px}
+  .cev a{color:var(--accent);font-weight:700;font-size:12px;text-decoration:none;flex:none}
+  .calempty{color:var(--muted);font-size:13px;padding:10px 6px;border:1px dashed var(--line);border-radius:9px;text-align:center}
+  .calsync{margin:6px 4px 0;font-size:11px;color:var(--muted)}
+
   /* ---------- forms ---------- */
   input[type=text],input[type=time],input[type=number],select,textarea{
     background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 10px;width:100%;
@@ -187,7 +202,10 @@
       <button class="btn sm ghost" id="resetDay">Reset day from template</button>
     </div>
 
-    <div class="slots" id="daySlots"></div>
+    <div class="daywrap">
+      <div class="slots" id="daySlots"></div>
+      <aside class="card calrail" id="calRail"></aside>
+    </div>
   </section>
 
   <!-- ============ REVIEW ============ -->
@@ -212,9 +230,7 @@
       <div class="row" style="margin-top:8px">
         <select id="newRec" style="width:auto">
           <option value="once">Just tomorrow</option>
-          <option value="daily">Every day (add to template)</option>
-          <option value="weekdays">Weekdays (add to template)</option>
-          <option value="weekends">Weekends (add to template)</option>
+          <option value="always">Every day like it — add to that template</option>
         </select>
         <button class="btn sm" id="addTomorrow">Add</button>
       </div>
@@ -234,8 +250,17 @@
 
   <!-- ============ TEMPLATE ============ -->
   <section id="tab-template" class="hide">
-    <h2>Base template</h2>
-    <p class="sub">Your default day. Each new day is built from this, then adapted by what you did yesterday.</p>
+    <h2>Base templates</h2>
+    <p class="sub">Weekdays and weekends run off separate templates. Each new day is built
+       from the matching one, then adapted by what you did the day before.</p>
+
+    <div class="tabs" style="margin-bottom:12px;display:inline-flex" id="profTabs">
+      <button data-prof="weekday" aria-selected="true">Weekday</button>
+      <button data-prof="weekend" aria-selected="false">Weekend</button>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn sm ghost" id="copyProfile">Copy this template to the other</button>
+    </div>
 
     <div id="tmplSlots"></div>
 
@@ -281,10 +306,8 @@
     <div class="grid c2">
       <div><label class="f">Minutes (optional)</label><input type="number" id="dMin" min="0" step="5" placeholder="30"></div>
       <div><label class="f">Repeats</label><select id="dRec">
-        <option value="once">Just this day</option>
-        <option value="daily">Every day</option>
-        <option value="weekdays">Weekdays</option>
-        <option value="weekends">Weekends</option>
+        <option value="manual">Just this day</option>
+        <option value="always">Every day like it</option>
       </select></div>
     </div>
   </div>
@@ -298,7 +321,7 @@
 
 <script>
 "use strict";
-const VER = "v1.1";
+const VER = "v1.3";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -327,12 +350,6 @@ const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturd
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function pretty(k){ const d=parseKey(k); return DOW[d.getDay()]+' '+d.getDate()+' '+MON[d.getMonth()]; }
 function isWeekend(k){ const g=parseKey(k).getDay(); return g===0||g===6; }
-function recurs(rec,k){
-  if(rec==='daily') return true;
-  if(rec==='weekdays') return !isWeekend(k);
-  if(rec==='weekends') return isWeekend(k);
-  return false;
-}
 
 /* ---------------- default state ---------------- */
 function seed(){
@@ -345,78 +362,164 @@ function seed(){
     {id:'c5',name:'Learning',colour:'#0e8f96'},
     {id:'c6',name:'Rest',colour:'#6b7688'}
   ];
-  const slots = [
-    {id:'s1',name:'Early morning',time:'06:00'},
-    {id:'s2',name:'Morning',time:'08:30'},
-    {id:'s3',name:'Midday',time:'12:00'},
-    {id:'s4',name:'Afternoon',time:'14:00'},
-    {id:'s5',name:'Evening',time:'18:00'},
-    {id:'s6',name:'Wind down',time:'21:00'}
-  ];
   const A = (slotId,title,cat,rec,min)=>({id:uid(),slotId,title,cat,rec,min:min||null});
-  const acts = [
-    A('s1','Walk / gym','c2','daily',45),
-    A('s2','Plan the day','c3','weekdays',10),
-    A('s2','Focus block — priority job','c1','weekdays',90),
-    A('s3','Lunch + reset','c6','daily',45),
-    A('s4','Calls & follow-ups','c3','weekdays',60),
-    A('s5','Dinner','c4','daily',null),
-    A('s6','Read','c5','daily',20)
-  ];
   return {
-    version:1,
-    cats, template:{slots, acts},
+    version:2,
+    cats,
+    template:{
+      weekday:{
+        slots:[
+          {id:'s1',name:'Early morning',time:'06:00'},
+          {id:'s2',name:'Morning',time:'08:30'},
+          {id:'s3',name:'Midday',time:'12:00'},
+          {id:'s4',name:'Afternoon',time:'14:00'},
+          {id:'s5',name:'Evening',time:'18:00'},
+          {id:'s6',name:'Wind down',time:'21:00'}
+        ],
+        acts:[
+          A('s1','Walk / gym','c2','always',45),
+          A('s2','Plan the day','c3','always',10),
+          A('s2','Focus block — priority job','c1','always',90),
+          A('s3','Lunch + reset','c6','always',45),
+          A('s4','Calls & follow-ups','c3','always',60),
+          A('s5','Dinner','c4','always',null),
+          A('s6','Read','c5','always',20)
+        ]
+      },
+      weekend:{
+        slots:[
+          {id:'w1',name:'Slow start',time:'08:00'},
+          {id:'w2',name:'Late morning',time:'10:00'},
+          {id:'w3',name:'Afternoon',time:'13:00'},
+          {id:'w4',name:'Evening',time:'18:00'},
+          {id:'w5',name:'Wind down',time:'21:30'}
+        ],
+        acts:[
+          A('w1','Walk / gym','c2','always',45),
+          A('w1','Slow breakfast','c4','always',null),
+          A('w3','Personal time','c4','always',null),
+          A('w4','Dinner','c4','always',null),
+          A('w5','Read','c5','always',20)
+        ]
+      }
+    },
     days:{}, note:{}, pendingAdds:{}, carry:{},
     current: todayKey()
   };
 }
 
 let S = load() || seed();
+
+/* ---------------- migration: one template -> weekday + weekend ----------------
+   v1 kept a single slot set and encoded the day-type on each activity
+   (daily/weekdays/weekends). v2 gives each day type its own template, so
+   recurrence collapses to "always" (every day of that type) or "manual". */
+function migrate(){
+  if(S.version >= 2 || !S.template || !S.template.slots) return;
+  const oldSlots = S.template.slots, oldActs = S.template.acts || [];
+  const copySlots = () => oldSlots.map(s=>({id:uid(), name:s.name, time:s.time, from:s.id}));
+
+  const wdSlots = oldSlots.map(s=>({...s}));                 // weekday keeps the original ids
+  const weSlots = copySlots();                               // weekend gets its own
+  const weMap = Object.fromEntries(weSlots.map(s=>[s.from, s.id]));
+  weSlots.forEach(s=>delete s.from);
+
+  const mk = (a, slotId) => ({id:uid(), slotId, title:a.title, cat:a.cat, min:a.min, rec:'always'});
+  const wdActs = [], weActs = [];
+  oldActs.forEach(a=>{
+    if(a.rec === 'daily' || a.rec === 'weekdays') wdActs.push(mk(a, a.slotId));
+    if(a.rec === 'daily' || a.rec === 'weekends') weActs.push(mk(a, weMap[a.slotId] || weSlots[0].id));
+    if(a.rec === 'once') wdActs.push({...mk(a, a.slotId), rec:'manual'});
+  });
+
+  S.template = {weekday:{slots:wdSlots, acts:wdActs}, weekend:{slots:weSlots, acts:weActs}};
+  // Existing day items keep their slot ids (weekday ids survived) — only the
+  // recurrence vocabulary changes.
+  Object.values(S.days || {}).forEach(d=>{
+    d.profile = d.profile || (isWeekend(d.date) ? 'weekend' : 'weekday');
+    (d.items||[]).forEach(it=>{ it.rec = (it.rec === 'once') ? 'manual' : 'always'; });
+  });
+  S.version = 2;
+  save();
+}
+migrate();
+
 if(!S.pendingAdds) S.pendingAdds = {};
 if(!S.carry) S.carry = {};
 if(!S.note) S.note = {};
 
 const catById = id => S.cats.find(c=>c.id===id) || {name:'—',colour:'#8a94a3'};
-const slotById = id => S.template.slots.find(s=>s.id===id);
+const profileFor = k => isWeekend(k) ? 'weekend' : 'weekday';
+const tpl = k => S.template[profileFor(k)];
+const tplOf = name => S.template[name];
+// An item can reference a slot in either template — carried items cross over.
+const slotById = id => S.template.weekday.slots.find(s=>s.id===id)
+                    || S.template.weekend.slots.find(s=>s.id===id);
+
+// Minutes since midnight, for lining slots up across the two templates.
+function slotMins(s){
+  const [h,m] = String(s && s.time || '').split(':').map(Number);
+  return isNaN(h) ? 9999 : h*60 + (m||0);
+}
+// Moving between templates: land in the slot closest in time, never nowhere.
+function mapSlot(slotId, targetProfile){
+  const target = tplOf(targetProfile).slots;
+  if(!target.length) return null;
+  if(target.some(s=>s.id===slotId)) return slotId;
+  const from = slotById(slotId);
+  if(!from) return target[0].id;
+  const want = slotMins(from);
+  return target.reduce((best,s)=>
+    Math.abs(slotMins(s)-want) < Math.abs(slotMins(best)-want) ? s : best, target[0]).id;
+}
 
 /* ---------------- day building ---------------- */
 // Build a fresh day purely from the template (used for a first day, or a manual reset).
 function buildFromTemplate(k){
-  const items = S.template.acts
-    .filter(a => recurs(a.rec,k))
+  const p = profileFor(k);
+  const items = tplOf(p).acts
+    .filter(a => a.rec === 'always')
     .map(a => ({id:uid(), src:a.id, slotId:a.slotId, title:a.title, cat:a.cat,
                 min:a.min, rec:a.rec, status:'pending', carried:0}));
-  return {date:k, items, generated:'template'};
+  return {date:k, profile:p, items, generated:'template'};
 }
+
+// Is this item already coming back on its own on the target day? Only if its
+// source activity lives in that day's template — a weekday habit is not "coming
+// back" on a Saturday, because Saturday runs off a different template.
+const willReturn = (it,k) =>
+  !!it.src && tpl(k).acts.some(a => a.id === it.src && a.rec === 'always');
 
 // A specific one-off task chases you until it's done; a missed habit just comes
 // back on its normal schedule rather than piling up.
-const carryDefault = it => it.rec === 'once';
+const carryDefault = it => it.rec === 'manual';
 const willCarry = (it,k) => {
   const f = (S.carry[k] || {})[it.id];
   return f === undefined ? carryDefault(it) : f;
 };
 
-// The rules engine: tomorrow = template for that weekday + carried-over items + explicit adds.
+// The rules engine: tomorrow = that day's template + carried-over items + explicit adds.
 function buildNextDay(fromKey){
   const k = shift(fromKey,1);
   const day = buildFromTemplate(k);
   const prev = S.days[fromKey];
+  const p = profileFor(k);
 
   if(prev){
     prev.items.forEach(it=>{
       if(it.status === 'done') return;        // finished — nothing to carry
-      if(recurs(it.rec,k)) return;            // already coming back via the template
+      if(willReturn(it,k)) return;            // already coming back via the template
       if(!willCarry(it, fromKey)) return;     // default off for habits, or dropped in the review
-      day.items.push({id:uid(), src:null, slotId:it.slotId, title:it.title, cat:it.cat,
-                      min:it.min, rec:'once', status:'pending', carried:(it.carried||0)+1});
+      day.items.push({id:uid(), src:null, slotId:mapSlot(it.slotId, p), title:it.title,
+                      cat:it.cat, min:it.min, rec:'manual', status:'pending',
+                      carried:(it.carried||0)+1});
     });
   }
 
   (S.pendingAdds[fromKey]||[]).forEach(a=>{
     if(a.rec === 'once'){
-      day.items.push({id:uid(), src:null, slotId:a.slotId, title:a.title, cat:a.cat,
-                      min:null, rec:'once', status:'pending', carried:0});
+      day.items.push({id:uid(), src:null, slotId:mapSlot(a.slotId, p), title:a.title,
+                      cat:a.cat, min:null, rec:'manual', status:'pending', carried:0});
     }
   });
 
@@ -455,15 +558,28 @@ function renderDay(){
   document.getElementById('dayLabel').firstChild.nodeValue = pretty(k);
   const gen = day.generated==='rolled' ? 'adapted from the day before' : 'built from template';
   document.getElementById('dayMeta').textContent =
-    (k===todayKey() ? 'Today · ' : '') + gen;
+    (k===todayKey() ? 'Today · ' : '') + gen +
+    ' · ' + (profileFor(k)==='weekend' ? 'weekend template' : 'weekday template');
 
   const done = day.items.filter(i=>i.status==='done').length;
   const tot = day.items.length || 1;
   document.getElementById('prog').style.width = Math.round(done/tot*100)+'%';
 
+  const slots = tplOf(day.profile || profileFor(k)).slots;
+  // Nothing may go missing: if a slot was deleted or the day changed template,
+  // pull orphaned items into the nearest surviving slot rather than dropping them.
+  let repaired = false;
+  day.items.forEach(it=>{
+    if(!slots.some(s=>s.id===it.slotId)){
+      it.slotId = mapSlot(it.slotId, day.profile || profileFor(k));
+      repaired = true;
+    }
+  });
+  if(repaired) save();
+
   const wrap = document.getElementById('daySlots');
   wrap.innerHTML = '';
-  S.template.slots.forEach(sl=>{
+  slots.forEach(sl=>{
     const box = document.createElement('div');
     box.className = 'card slot';
     box.dataset.slot = sl.id;
@@ -479,6 +595,7 @@ function renderDay(){
     box.appendChild(list);
     wrap.appendChild(box);
   });
+  renderCalRail();
 }
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -494,7 +611,7 @@ function itemEl(it, day){
     <button class="tick ${it.status==='done'?'on':''}" title="Mark done">${it.status==='done'?'✓':''}</button>
     <span class="title">${esc(it.title)}</span>
     ${it.carried ? `<span class="pill carry">carried ×${it.carried}</span>`:''}
-    ${it.rec!=='once' ? `<span class="pill">${it.rec}</span>`:''}
+    ${it.rec==='always' ? `<span class="pill">routine</span>`:''}
     ${it.min ? `<span class="meta">${it.min}m</span>`:''}
   `;
   el.querySelector('.tick').onclick = e=>{
@@ -506,6 +623,63 @@ function itemEl(it, day){
   makeDraggable(el, it, day);
   return el;
 }
+
+/* ---------------- calendar rail (read-only, synced from Google Calendar) ----------------
+   calendar.json is written into this folder by the sync job. The app only reads it. */
+const CAL_TYPES = {
+  intro:      {label:'Intro call',        colour:'#4570D8'},
+  proposal:   {label:'Proposal/Strategy', colour:'#D2A01C'},
+  onboarding: {label:'Onboarding',        colour:'#1f9d64'},
+  other:      {label:'Meeting',           colour:'#6b7688'}
+};
+let CAL = null;
+function loadCalendar(){
+  fetch('calendar.json?t='+Date.now(), {cache:'no-store'})
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { CAL = d; renderCalRail(); })
+    .catch(() => { renderCalRail(); });
+}
+function fmt12(t){
+  let [h,m] = String(t||'').split(':').map(Number);
+  if(isNaN(h)) return '';
+  const ap = h>=12 ? 'pm' : 'am'; h = h%12 || 12;
+  return h + ':' + pad(m||0) + ap;
+}
+function renderCalRail(){
+  const box = document.getElementById('calRail');
+  if(!box) return;
+  const k = S.current;
+  const evs = (CAL && CAL.days && CAL.days[k]) ? CAL.days[k].slice().sort((a,b)=>String(a.start).localeCompare(String(b.start))) : [];
+  const mins = evs.reduce((n,e)=>n+(e.mins||0),0);
+  box.innerHTML = `<h3>Calls &amp; meetings<span class="tot">${evs.length ? evs.length+' booked · '+mins+'m' : ''}</span></h3>`;
+  if(!CAL){
+    box.innerHTML += `<div class="calempty">Calendar not synced yet</div>`;
+    return;
+  }
+  if(!evs.length){
+    box.innerHTML += `<div class="calempty">No calls booked, clear runway</div>`;
+  }
+  evs.forEach(e=>{
+    const t = CAL_TYPES[e.type] || CAL_TYPES.other;
+    const el = document.createElement('div');
+    el.className = 'cev';
+    el.style.setProperty('--c', t.colour);
+    el.innerHTML = `
+      <span class="tm">${fmt12(e.start)}<span>${e.mins ? e.mins+'m' : ''}</span></span>
+      <span class="ti">${esc(e.title)}<small>${t.label}</small></span>
+      ${e.link ? `<a href="${esc(e.link)}" target="_blank" rel="noopener">Join</a>` : ''}`;
+    box.appendChild(el);
+  });
+  if(CAL.updated){
+    const f = document.createElement('div');
+    f.className = 'calsync';
+    try{
+      f.textContent = 'Synced ' + new Date(CAL.updated).toLocaleString('en-AU',{weekday:'short', hour:'numeric', minute:'2-digit'});
+    }catch(e){ f.textContent = 'Synced'; }
+    box.appendChild(f);
+  }
+}
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) loadCalendar(); });
 
 document.getElementById('prevDay').onclick = ()=>{ S.current = shift(S.current,-1); save(); renderDay(); };
 document.getElementById('nextDay').onclick = ()=>{ S.current = shift(S.current, 1); save(); renderDay(); };
@@ -578,17 +752,20 @@ function fillSelect(sel, opts, val){
   sel.innerHTML = opts.map(o=>`<option value="${o.v}">${esc(o.t)}</option>`).join('');
   if(val) sel.value = val;
 }
-const slotOpts = () => S.template.slots.map(s=>({v:s.id,t:s.name}));
+const slotOpts = (prof) => tplOf(prof || EDIT_PROFILE).slots.map(s=>({v:s.id,t:s.name}));
 const catOpts  = () => S.cats.map(c=>({v:c.id,t:c.name}));
 
 function openItemDialog(it, day, mode){
   dlgCtx = {it, day, mode: mode || (day?'day':'template')};
   document.getElementById('dlgTitle').textContent = it ? 'Edit activity' : 'Add activity';
-  fillSelect(document.getElementById('dSlot'), slotOpts(), it?it.slotId:S.template.slots[0].id);
+  const dlgProf = (mode==='template') ? EDIT_PROFILE
+                : (day ? (day.profile || profileFor(day.date)) : EDIT_PROFILE);
+  const dlgSlots = tplOf(dlgProf).slots;
+  fillSelect(document.getElementById('dSlot'), slotOpts(dlgProf), it?it.slotId:dlgSlots[0].id);
   fillSelect(document.getElementById('dCat'),  catOpts(),  it?it.cat:S.cats[0].id);
   document.getElementById('dTitle').value = it?it.title:'';
   document.getElementById('dMin').value = it&&it.min?it.min:'';
-  document.getElementById('dRec').value = it?it.rec:'once';
+  document.getElementById('dRec').value = it?it.rec:'manual';
   document.getElementById('dDelete').classList.toggle('hide', !it);
   dlg.showModal();
 }
@@ -603,9 +780,10 @@ dlg.addEventListener('close', ()=>{
   const rec = document.getElementById('dRec').value;
 
   if(mode === 'template'){
-    if(v==='delete'){ S.template.acts = S.template.acts.filter(a=>a.id!==it.id); }
+    const T = tplOf(EDIT_PROFILE);
+    if(v==='delete'){ T.acts = T.acts.filter(a=>a.id!==it.id); }
     else if(it){ Object.assign(it,{title,slotId,cat,min,rec}); }
-    else if(title){ S.template.acts.push({id:uid(),slotId,title,cat,rec,min}); }
+    else if(title){ T.acts.push({id:uid(),slotId,title,cat,rec,min}); }
     save(); renderTemplate();
   } else {
     if(v==='delete'){ day.items = day.items.filter(x=>x.id!==it.id); }
@@ -637,7 +815,7 @@ function renderReview(){
   } else {
     cl.innerHTML = '';
     undone.forEach(it=>{
-      const auto = recurs(it.rec, shift(k,1));
+      const auto = willReturn(it, shift(k,1));
       const row = document.createElement('label');
       row.className = 'catrow';
       const on = willCarry(it, k);
@@ -645,13 +823,13 @@ function renderReview(){
         <input type="checkbox" ${on?'checked':''} ${auto?'disabled':''} style="width:auto">
         <span class="swatch" style="background:${catById(it.cat).colour}"></span>
         <span style="flex:1">${esc(it.title)}</span>
-        <span class="pill">${auto ? 'returns anyway ('+it.rec+')' : slotById(it.slotId)?.name || ''}</span>`;
+        <span class="pill">${auto ? 'returns anyway' : slotById(it.slotId)?.name || ''}</span>`;
       row.querySelector('input').onchange = e=>{ flags[it.id] = e.target.checked; save(); };
       cl.appendChild(row);
     });
   }
 
-  fillSelect(document.getElementById('newSlot'), slotOpts());
+  fillSelect(document.getElementById('newSlot'), slotOpts(profileFor(shift(k,1))));
   fillSelect(document.getElementById('newCat'), catOpts());
   document.getElementById('dayNote').value = S.note[k] || '';
   renderPendingAdds();
@@ -670,10 +848,11 @@ function renderPendingAdds(){
     el.style.setProperty('--c', catById(a.cat).colour);
     el.innerHTML = `<span class="title">${esc(a.title)}</span>
       <span class="pill">${esc(slotById(a.slotId)?.name||'')}</span>
-      <span class="pill">${a.rec==='once'?'tomorrow only':a.rec+' · template'}</span>
+      <span class="pill">${a.rec==='once'?'tomorrow only':'added to '+a.prof+' template'}</span>
       <button class="btn sm ghost danger">✕</button>`;
     el.querySelector('button').onclick = ()=>{
-      if(a.rec !== 'once' && a.tmplId) S.template.acts = S.template.acts.filter(x=>x.id!==a.tmplId);
+      if(a.rec !== 'once' && a.tmplId)
+        tplOf(a.prof).acts = tplOf(a.prof).acts.filter(x=>x.id!==a.tmplId);
       list.splice(i,1); save(); renderPendingAdds();
     };
     box.appendChild(el);
@@ -690,9 +869,11 @@ document.getElementById('addTomorrow').onclick = ()=>{
     cat: document.getElementById('newCat').value,
     rec: document.getElementById('newRec').value
   };
+  a.prof = profileFor(shift(k,1));
   if(a.rec !== 'once'){
     a.tmplId = uid();
-    S.template.acts.push({id:a.tmplId, slotId:a.slotId, title:a.title, cat:a.cat, rec:a.rec, min:null});
+    tplOf(a.prof).acts.push({id:a.tmplId, slotId:a.slotId, title:a.title,
+                             cat:a.cat, rec:'always', min:null});
   }
   (S.pendingAdds[k] = S.pendingAdds[k] || []).push(a);
   document.getElementById('newTitle').value = '';
@@ -712,9 +893,12 @@ document.getElementById('genTomorrow').onclick = ()=>{
 
 /* ---------------- TEMPLATE ---------------- */
 function renderTemplate(){
+  const T = tplOf(EDIT_PROFILE);
+  document.querySelectorAll('#profTabs button').forEach(b=>
+    b.setAttribute('aria-selected', String(b.dataset.prof === EDIT_PROFILE)));
   const wrap = document.getElementById('tmplSlots');
   wrap.innerHTML = '';
-  S.template.slots.forEach((sl,idx)=>{
+  T.slots.forEach((sl,idx)=>{
     const box = document.createElement('div');
     box.className = 'card tmplslot';
     const hd = document.createElement('div');
@@ -723,32 +907,32 @@ function renderTemplate(){
       <input type="text" value="${esc(sl.name)}" style="flex:1">
       <input type="time" value="${sl.time||''}">
       <button class="btn sm ghost" title="Move up" ${idx===0?'disabled':''}>↑</button>
-      <button class="btn sm ghost" title="Move down" ${idx===S.template.slots.length-1?'disabled':''}>↓</button>
+      <button class="btn sm ghost" title="Move down" ${idx===T.slots.length-1?'disabled':''}>↓</button>
       <button class="btn sm ghost danger" title="Delete slot">✕</button>`;
     const [nameI, timeI, up, down, del] = hd.querySelectorAll('input,button');
     nameI.oninput = e=>{ sl.name = e.target.value; save(); };
     timeI.oninput = e=>{ sl.time = e.target.value; save(); };
-    up.onclick = ()=>{ const a=S.template.slots; [a[idx-1],a[idx]]=[a[idx],a[idx-1]]; save(); renderTemplate(); };
-    down.onclick = ()=>{ const a=S.template.slots; [a[idx+1],a[idx]]=[a[idx],a[idx+1]]; save(); renderTemplate(); };
+    up.onclick = ()=>{ const a=T.slots; [a[idx-1],a[idx]]=[a[idx],a[idx-1]]; save(); renderTemplate(); };
+    down.onclick = ()=>{ const a=T.slots; [a[idx+1],a[idx]]=[a[idx],a[idx+1]]; save(); renderTemplate(); };
     del.onclick = ()=>{
-      if(S.template.slots.length<2) return alert('Keep at least one slot.');
+      if(T.slots.length<2) return alert('Keep at least one slot.');
       if(!confirm(`Delete "${sl.name}" and its activities from the template?`)) return;
-      S.template.slots = S.template.slots.filter(x=>x.id!==sl.id);
-      S.template.acts = S.template.acts.filter(a=>a.slotId!==sl.id);
+      T.slots = T.slots.filter(x=>x.id!==sl.id);
+      T.acts = T.acts.filter(a=>a.slotId!==sl.id);
       save(); renderTemplate();
     };
     box.appendChild(hd);
 
     const list = document.createElement('div');
     list.className = 'items';
-    const acts = S.template.acts.filter(a=>a.slotId===sl.id);
+    const acts = T.acts.filter(a=>a.slotId===sl.id);
     if(!acts.length) list.innerHTML = `<div class="empty">nothing scheduled</div>`;
     acts.forEach(a=>{
       const el = document.createElement('div');
       el.className = 'item';
       el.style.setProperty('--c', catById(a.cat).colour);
       el.innerHTML = `<span class="title">${esc(a.title)}</span>
-        <span class="pill">${a.rec==='once'?'manual':a.rec}</span>
+        <span class="pill">${a.rec==='always'?'every day':'manual'}</span>
         ${a.min?`<span class="meta">${a.min}m</span>`:''}`;
       el.onclick = ()=> openItemDialog(a, null, 'template');
       list.appendChild(el);
@@ -762,7 +946,7 @@ function renderTemplate(){
     add.onclick = ()=>{
       openItemDialog(null, null, 'template');
       document.getElementById('dSlot').value = sl.id;
-      document.getElementById('dRec').value = 'daily';
+      document.getElementById('dRec').value = 'always';
     };
     box.appendChild(add);
     wrap.appendChild(box);
@@ -784,7 +968,8 @@ function renderTemplate(){
       if(!confirm(`Delete category "${c.name}"? Activities using it fall back to the first category.`)) return;
       S.cats.splice(i,1);
       const f = S.cats[0].id;
-      S.template.acts.forEach(a=>{ if(!S.cats.some(x=>x.id===a.cat)) a.cat=f; });
+      ['weekday','weekend'].forEach(p=>
+        tplOf(p).acts.forEach(a=>{ if(!S.cats.some(x=>x.id===a.cat)) a.cat=f; }));
       Object.values(S.days).forEach(d=>d.items.forEach(it=>{ if(!S.cats.some(x=>x.id===it.cat)) it.cat=f; }));
       save(); renderTemplate();
     };
@@ -793,8 +978,29 @@ function renderTemplate(){
 }
 
 document.getElementById('addSlot').onclick = ()=>{
-  S.template.slots.push({id:uid(), name:'New slot', time:''});
+  tplOf(EDIT_PROFILE).slots.push({id:uid(), name:'New slot', time:''});
   save(); renderTemplate();
+};
+
+/* Which template the Template tab is editing. */
+let EDIT_PROFILE = 'weekday';
+document.querySelectorAll('#profTabs button').forEach(b=>
+  b.onclick = ()=>{ EDIT_PROFILE = b.dataset.prof; renderTemplate(); });
+
+document.getElementById('copyProfile').onclick = ()=>{
+  const from = EDIT_PROFILE, to = from==='weekday' ? 'weekend' : 'weekday';
+  if(!confirm(`Replace the ${to} template with a copy of the ${from} one? `+
+              `The ${to} template's slots and activities are lost.`)) return;
+  const src = tplOf(from);
+  const idMap = {};
+  const slots = src.slots.map(s=>{ const id = uid(); idMap[s.id] = id;
+                                   return {id, name:s.name, time:s.time}; });
+  const acts = src.acts.map(a=>({id:uid(), slotId:idMap[a.slotId], title:a.title,
+                                 cat:a.cat, rec:a.rec, min:a.min}));
+  S.template[to] = {slots, acts};
+  save();
+  EDIT_PROFILE = to;
+  renderTemplate();
 };
 document.getElementById('addCat').onclick = ()=>{
   S.cats.push({id:uid(), name:'New category', colour:'#6b7280'});
@@ -866,6 +1072,7 @@ if('serviceWorker' in navigator){
 }
 document.getElementById('ver').textContent = VER;
 if(!S.days[todayKey()] && Object.keys(S.days).length===0) S.current = todayKey();
+loadCalendar();
 showTab('today');
 save();
 </script>

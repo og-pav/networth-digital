@@ -1,6 +1,6 @@
 /* NetWorth Routine — offline shell.
    Bump CACHE whenever index.html or the assets change, so phones pick it up. */
-const CACHE = 'nwr-v2';
+const CACHE = 'nwr-v4';
 const CORE = [
   './',
   './index.html',
@@ -28,6 +28,12 @@ self.addEventListener('activate', e=>{
 self.addEventListener('fetch', e=>{
   const req = e.request;
   if(req.method !== 'GET') return;
+
+  // Calendar data: always network first so today's bookings stay fresh.
+  if(new URL(req.url).pathname.endsWith('/calendar.json')){
+    e.respondWith(fetch(req).catch(()=>caches.match(req)));
+    return;
+  }
 
   // The page itself: try the network so updates land, fall back to cache offline.
   if(req.mode === 'navigate'){
