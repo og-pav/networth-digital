@@ -150,6 +150,13 @@
   .cev .ti small{display:block;color:var(--muted);font-weight:600;font-size:11px}
   .cev a{color:var(--accent);font-weight:700;font-size:12px;text-decoration:none;flex:none}
   .calempty{color:var(--muted);font-size:13px;padding:10px 6px;border:1px dashed var(--line);border-radius:9px;text-align:center}
+  /* a booking sitting inside the block it eats into */
+  .slotcall{display:flex;gap:8px;align-items:center;padding:6px 9px;border-radius:9px;
+    margin-bottom:6px;border:1px dashed var(--c,#888);background:transparent}
+  .slotcall b{font-size:12px;font-weight:800;white-space:nowrap;color:var(--c)}
+  .slotcall span{flex:1;min-width:0;font-size:12px;font-weight:600;overflow-wrap:anywhere}
+  .slotcall a{font-size:11px;font-weight:700;color:var(--accent);text-decoration:none;flex:none}
+  .slot h3 .booked{text-transform:none;letter-spacing:0;font-weight:700;color:var(--gold);font-size:11px}
   .calsync{margin:6px 4px 0;font-size:11px;color:var(--muted)}
 
   /* ---------- forms ---------- */
@@ -343,7 +350,7 @@
 
 <script>
 "use strict";
-const VER = "v1.4";
+const VER = "v1.5";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -601,11 +608,25 @@ function renderDay(){
 
   const wrap = document.getElementById('daySlots');
   wrap.innerHTML = '';
-  slots.forEach(sl=>{
+  slots.forEach((sl,si)=>{
     const box = document.createElement('div');
     box.className = 'card slot';
     box.dataset.slot = sl.id;
-    box.innerHTML = `<h3>${esc(sl.name)}<span class="time">${sl.time||''}</span></h3>`;
+    // Which bookings land inside this block, and how much of it they take.
+    const calls = callsInSlot(k, slots, si);
+    const booked = calls.reduce((n,e)=>n+(e.mins||0),0);
+    box.innerHTML = `<h3>${esc(sl.name)}` +
+      (booked ? `<span class="booked">${calls.length} booked · ${booked}m</span>` : '') +
+      `<span class="time">${sl.time||''}</span></h3>`;
+    calls.forEach(e=>{
+      const t = CAL_TYPES[e.type] || CAL_TYPES.other;
+      const c = document.createElement('div');
+      c.className = 'slotcall';
+      c.style.setProperty('--c', t.colour);
+      c.innerHTML = `<b>${fmt12(e.start)}</b><span>${esc(e.title)}</span>` +
+        (e.link ? `<a href="${esc(e.link)}" target="_blank" rel="noopener">Join</a>` : '');
+      box.appendChild(c);
+    });
     const list = document.createElement('div');
     list.className = 'items';
     const items = day.items.filter(i=>i.slotId===sl.id);
@@ -649,17 +670,39 @@ function itemEl(it, day){
 /* ---------------- calendar rail (read-only, synced from Google Calendar) ----------------
    calendar.json is written into this folder by the sync job. The app only reads it. */
 const CAL_TYPES = {
-  intro:      {label:'Intro call',        colour:'#4570D8'},
-  proposal:   {label:'Proposal/Strategy', colour:'#D2A01C'},
-  onboarding: {label:'Onboarding',        colour:'#1f9d64'},
-  other:      {label:'Meeting',           colour:'#6b7688'}
+  intro:      {label:'Intro call',          colour:'#4570D8'},
+  proposal:   {label:'Proposal / strategy', colour:'#D2A01C'},
+  onboarding: {label:'Onboarding',          colour:'#1f9d64'},
+  meeting:    {label:'Meeting',             colour:'#7c5cd6'},
+  other:      {label:'Blocked out',         colour:'#6b7688'}
 };
+
+// Minutes since midnight from an "HH:MM" string.
+const hhmm = t => { const [h,m] = String(t||'').split(':').map(Number);
+                    return isNaN(h) ? -1 : h*60 + (m||0); };
+
+// A block runs from its own start until the next block begins, so a booking
+// belongs to whichever block was already claiming that stretch of the day.
+function callsInSlot(k, slots, idx){
+  const evs = (CAL && CAL.days && CAL.days[k]) || [];
+  const from = hhmm(slots[idx].time);
+  const to   = idx + 1 < slots.length ? hhmm(slots[idx+1].time) : 24*60;
+  if(from < 0) return [];
+  return evs.filter(e=>{ const m = hhmm(e.start); return m >= from && m < to; })
+            .sort((a,b)=>hhmm(a.start) - hhmm(b.start));
+}
 let CAL = null;
 function loadCalendar(){
   fetch('calendar.json?t='+Date.now(), {cache:'no-store'})
     .then(r => r.ok ? r.json() : null)
-    .then(d => { CAL = d; renderCalRail(); })
-    .catch(() => { renderCalRail(); });
+    .then(d => { CAL = d; afterCal(); })
+    .catch(() => { afterCal(); });
+}
+// Bookings show inside the blocks as well as in the rail, so a late-arriving
+// calendar has to redraw the day, not just the sidebar.
+function afterCal(){
+  if(document.getElementById('tab-today').classList.contains('hide')) renderCalRail();
+  else renderDay();
 }
 function fmt12(t){
   let [h,m] = String(t||'').split(':').map(Number);

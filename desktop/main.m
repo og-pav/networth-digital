@@ -39,12 +39,22 @@ static NSString *const kScheme = @"nwroutine";
     NSString *path = task.request.URL.path;
     if (path.length == 0 || [path isEqualToString:@"/"]) path = @"/index.html";
 
+    NSData *data = nil;
+
+    // The calendar is the one file that must be live rather than bundled — a
+    // copy baked in at build time would show yesterday's bookings forever. Read
+    // it from the working folder that the sync writes to, and fall back to the
+    // bundle so the app still runs if that folder is gone.
+    if ([path hasSuffix:@"/calendar.json"] || [path isEqualToString:@"/calendar.json"]) {
+        NSString *live = [NSHomeDirectory() stringByAppendingPathComponent:@"daily-routine/calendar.json"];
+        data = [NSData dataWithContentsOfFile:live];
+    }
+
     NSURL *file = [[self.root URLByAppendingPathComponent:path] URLByStandardizingPath];
     NSString *rootPath = self.root.URLByStandardizingPath.path;
 
     // Never serve anything outside the bundle, whatever the page asks for.
-    NSData *data = nil;
-    if ([file.path hasPrefix:rootPath]) data = [NSData dataWithContentsOfURL:file];
+    if (!data && [file.path hasPrefix:rootPath]) data = [NSData dataWithContentsOfURL:file];
 
     if (!data) {
         [task didFailWithError:[NSError errorWithDomain:@"NWRoutine" code:404
