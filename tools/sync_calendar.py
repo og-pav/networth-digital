@@ -119,15 +119,33 @@ def from_ics(url, days=21):
         })
     return out
 
-def conf_ics_url():
+
+# ---------------------------------------------------------------- write
+def conf_get(name):
     if not os.path.exists(CONF):
         return None
     for line in open(CONF):
-        if line.strip().startswith("ICS_URL="):
+        if line.strip().startswith(name + "="):
             return line.split("=", 1)[1].strip()
     return None
 
-# ---------------------------------------------------------------- write
+def push_to_worker(payload):
+    """Send the calendar to the private sync Worker so the phone can see it.
+    It is never published — calendar.json stays out of the repo."""
+    url, key = conf_get("WORKER_URL"), conf_get("SYNC_KEY")
+    if not url or not key:
+        return
+    req = urllib.request.Request(
+        url.rstrip("/") + "/calendar",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json", "X-Sync-Key": key},
+        method="PUT")
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            print(f"pushed to sync worker: {r.status}")
+    except Exception as e:
+        print(f"worker push failed (local file still written): {e}", file=sys.stderr)
+
 def write(events):
     days = {}
     for ev in sorted(events, key=lambda x: (x["date"], x["start"])):
@@ -143,6 +161,7 @@ def write(events):
     for d in sorted(days):
         kinds = ", ".join(f"{e['start']} {e['type']}" for e in days[d])
         print(f"  {d}  {kinds}")
+    push_to_worker(payload)
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
@@ -153,7 +172,7 @@ if __name__ == "__main__":
     if a.events:
         write(from_events_payload(a.events))
     else:
-        url = a.ics or conf_ics_url()
+        url = a.ics or conf_get("ICS_URL")
         if not url:
             sys.exit(f"No source. Pass --events FILE, or put ICS_URL=... in {CONF}")
         write(from_ics(url))

@@ -3,3 +3,6 @@ dist/
 
 # Never publish: contains client names and live Google Meet join links
 calendar.json
+
+# Wrangler local dev state — contains test copies of routine + calendar data
+sync/.wrangler/

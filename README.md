@@ -125,3 +125,59 @@ things worth knowing about how it's built:
 
 The Mac app and the phone keep **separate** data. Use Export/Import backup on the
 Template tab to move a snapshot between them.
+
+## Sync between devices
+
+Without this, the Mac app and the phone each keep their own separate copy —
+browser storage is per-origin and per-device. The sync is a small Cloudflare
+Worker with a KV namespace, on the free tier.
+
+### Deploy it
+
+```bash
+cd ~/daily-routine/sync
+npx wrangler login                      # opens a browser, approve once
+npx wrangler kv namespace create ROUTINE
+```
+
+Paste the printed `id` into `wrangler.toml`, then:
+
+```bash
+npx wrangler deploy
+```
+
+It prints a URL like `https://networth-routine-sync.<you>.workers.dev`.
+
+### Turn it on
+
+Template tab → **Sync between devices** → paste the Worker address, hit
+**Generate key**, **Save**. Then put the *same address and key* into the app on
+the other device. That key is the only thing protecting your data — treat it
+like a password.
+
+### How merging works
+
+Each device pulls, merges locally, and pushes back; the Worker never merges.
+Merging is **per day and per template**, decided by whichever side was edited
+last. Ticking things off on the phone at lunch and editing the template on the
+Mac that evening both survive — whole-state last-write-wins would silently throw
+one of them away.
+
+Days are stamped by diffing their content on save rather than by trusting each
+mutation site to mark itself dirty, because one missed call there loses a day's
+work in a merge with no error.
+
+### The calendar on your phone
+
+`calendar.json` never leaves the Mac — client names and live Meet links. Add
+your Worker details to `~/.config/networth-routine/calendar.conf`:
+
+```
+ICS_URL=https://calendar.google.com/calendar/ical/.../basic.ics
+WORKER_URL=https://networth-routine-sync.<you>.workers.dev
+SYNC_KEY=<the same key>
+```
+
+`tools/sync_calendar.py` then writes the local file *and* pushes a private copy
+to the Worker. The Mac reads the file; the phone falls back to the Worker copy.
+Nothing about your calendar is ever published.

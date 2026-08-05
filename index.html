@@ -304,6 +304,24 @@
       <button class="btn sm" id="addCat">+ Add category</button>
     </div>
 
+    <h2>Sync between devices</h2>
+    <p class="sub">Without this, your Mac and your phone each keep their own separate copy.
+       Paste the same address and key into both.</p>
+    <div class="card" style="padding:12px;margin-bottom:10px">
+      <div class="grid c2">
+        <div><label class="f">Worker address</label>
+          <input type="text" id="syncUrl" placeholder="https://networth-routine-sync.workers.dev"></div>
+        <div><label class="f">Sync key (same on every device)</label>
+          <input type="text" id="syncKeyIn" placeholder="paste or generate"></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn sm" id="syncSave">Save</button>
+        <button class="btn sm ghost" id="syncGen">Generate key</button>
+        <button class="btn sm primary" id="syncGo">Sync now</button>
+        <span class="sub" style="margin:0" id="syncState"></span>
+      </div>
+    </div>
+
     <h2>Backup</h2>
     <p class="sub">Everything lives in this browser only. Export now and then.</p>
     <div class="row">
@@ -354,9 +372,45 @@ const VER = "v1.5";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
 
+/* ---------------- change stamping ----------------
+   Sync merges per day, which needs to know when each day last changed. Rather
+   than trusting every mutation site to remember to mark itself dirty — one
+   missed call there silently loses a day's work in a merge — the signature of
+   each day is diffed on every save and stamped when it actually differs. */
+let SHADOW = {};
+const daySig = k => JSON.stringify([
+  S.days[k] ? {...S.days[k], updated: 0} : null,   // exclude the stamp itself
+  S.note[k] || '', S.carry[k] || {}, S.pendingAdds[k] || []
+]);
+
+function stampChanges(){
+  const now = Date.now();
+  Object.keys(S.days || {}).forEach(k=>{
+    const sig = daySig(k);
+    if(SHADOW[k] !== sig){
+      // First sight of a day isn't a change, but it does need a baseline stamp.
+      if(SHADOW[k] !== undefined || !S.days[k].updated) S.days[k].updated = now;
+      SHADOW[k] = sig;
+    }
+  });
+  const tsig = JSON.stringify([S.template, S.cats]);
+  if(SHADOW.__tpl !== tsig){
+    if(SHADOW.__tpl !== undefined || !S.tplUpdated) S.tplUpdated = now;
+    SHADOW.__tpl = tsig;
+  }
+}
+// Adopt a state as-is without treating it as edited (used after a merge).
+function resetShadow(){
+  SHADOW = {};
+  Object.keys(S.days || {}).forEach(k=>{ SHADOW[k] = daySig(k); });
+  SHADOW.__tpl = JSON.stringify([S.template, S.cats]);
+}
+
 /* ---------------- storage ---------------- */
 let memoryOnly = false;
 function save(){
+  stampChanges();
+  scheduleSync();
   if(memoryOnly) return;
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }
   catch(e){ memoryOnly = true; document.getElementById('storeWarn').classList.remove('hide'); }
@@ -367,6 +421,98 @@ function load(){
     if(raw) return JSON.parse(raw);
   }catch(e){ memoryOnly = true; document.getElementById('storeWarn').classList.remove('hide'); }
   return null;
+}
+
+/* ---------------- sync ----------------
+   Two devices, no server-side merging: each pulls, merges locally, pushes back.
+   Merging is per day and per template, decided by whichever side was edited
+   last, so ticking things off on the phone at lunch and editing the template on
+   the Mac that evening both survive. Whole-state last-write-wins would quietly
+   throw one of them away. */
+const SYNC_KEY = 'nwr-sync';
+let syncTimer = null, syncing = false, syncMsg = '';
+
+function syncCfg(){
+  try{ return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; }catch(e){ return {}; }
+}
+function setSyncCfg(c){
+  try{ localStorage.setItem(SYNC_KEY, JSON.stringify(c)); }catch(e){}
+}
+const syncOn = () => { const c = syncCfg(); return !!(c.url && c.key); };
+
+function newSyncKey(){
+  const b = new Uint8Array(24);
+  crypto.getRandomValues(b);
+  return [...b].map(x=>x.toString(36).padStart(2,'0')).join('').slice(0,40);
+}
+
+function mergeState(local, remote){
+  if(!remote || !remote.template || !remote.days) return local;   // nothing there yet
+  const out = JSON.parse(JSON.stringify(local));
+
+  // Template and categories move together — they reference each other by id.
+  if((remote.tplUpdated||0) > (local.tplUpdated||0)){
+    out.template   = remote.template;
+    out.cats       = remote.cats || local.cats;
+    out.tplUpdated = remote.tplUpdated;
+  }
+
+  Object.keys(remote.days).forEach(k=>{
+    const r = remote.days[k], l = local.days[k];
+    if(l && (l.updated||0) >= (r.updated||0)) return;             // ours is newer, keep it
+    out.days[k] = r;
+    // A day's note, carry decisions and queued adds belong with that day.
+    if(remote.note && k in remote.note)        out.note[k] = remote.note[k];
+    if(remote.carry && remote.carry[k])        out.carry[k] = remote.carry[k];
+    if(remote.pendingAdds && remote.pendingAdds[k]) out.pendingAdds[k] = remote.pendingAdds[k];
+  });
+  return out;
+}
+
+async function syncNow(manual){
+  const c = syncCfg();
+  if(!c.url || !c.key || syncing) return;
+  syncing = true; syncMsg = 'syncing…'; paintSync();
+  try{
+    const base = c.url.replace(/\/+$/,'');
+    const head = {'X-Sync-Key': c.key, 'Content-Type':'application/json'};
+
+    const res = await fetch(base + '/state', {headers: head, cache:'no-store'});
+    if(!res.ok) throw new Error('pull failed: ' + res.status);
+    const remote = await res.json();
+
+    const merged = mergeState(S, remote);
+    S = merged;
+    resetShadow();                       // a merge result is not an edit
+    try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+
+    const put = await fetch(base + '/state', {method:'PUT', headers: head, body: JSON.stringify(S)});
+    if(!put.ok) throw new Error('push failed: ' + put.status);
+
+    c.lastAt = Date.now(); setSyncCfg(c);
+    syncMsg = 'synced';
+    showTab(document.querySelector('[data-tab][aria-selected="true"]').dataset.tab);
+  }catch(err){
+    syncMsg = 'sync failed — ' + err.message;
+    if(manual) alert('Sync failed: ' + err.message);
+  }finally{
+    syncing = false; paintSync();
+  }
+}
+
+function scheduleSync(){
+  if(!syncOn()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(()=>syncNow(false), 4000);   // settle before pushing
+}
+
+function paintSync(){
+  const el = document.getElementById('syncState');
+  if(!el) return;
+  const c = syncCfg();
+  el.textContent = !syncOn() ? 'Not set up — this device keeps its own copy.'
+    : syncMsg || (c.lastAt ? 'Last synced ' + new Date(c.lastAt).toLocaleString('en-AU',
+        {weekday:'short', hour:'numeric', minute:'2-digit'}) : 'Ready.');
 }
 
 /* ---------------- dates ---------------- */
@@ -575,7 +721,7 @@ function showTab(t){
   });
   if(t==='today') renderDay();
   if(t==='review') renderReview();
-  if(t==='template') renderTemplate();
+  if(t==='template'){ renderTemplate(); paintSyncInputs(); }
   if(t==='history') renderHistory();
 }
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
@@ -693,10 +839,20 @@ function callsInSlot(k, slots, idx){
 }
 let CAL = null;
 function loadCalendar(){
+  // The Mac reads the file the sync script writes. The phone can't — that file
+  // never leaves the Mac — so it falls back to the private copy on the Worker.
   fetch('calendar.json?t='+Date.now(), {cache:'no-store'})
-    .then(r => r.ok ? r.json() : null)
+    .then(r => r.ok ? r.json() : Promise.reject())
     .then(d => { CAL = d; afterCal(); })
-    .catch(() => { afterCal(); });
+    .catch(() => {
+      const c = syncCfg();
+      if(!c.url || !c.key){ afterCal(); return; }
+      fetch(c.url.replace(/\/+$/,'') + '/calendar',
+            {headers:{'X-Sync-Key': c.key}, cache:'no-store'})
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { CAL = (d && d.days) ? d : null; afterCal(); })
+        .catch(() => afterCal());
+    });
 }
 // Bookings show inside the blocks as well as in the rail, so a late-arriving
 // calendar has to redraw the day, not just the sidebar.
@@ -744,7 +900,11 @@ function renderCalRail(){
     box.appendChild(f);
   }
 }
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) loadCalendar(); });
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden) return;
+  loadCalendar();
+  if(syncOn()) syncNow(false);
+});
 
 document.getElementById('prevDay').onclick = ()=>{ S.current = shift(S.current,-1); save(); renderDay(); };
 document.getElementById('nextDay').onclick = ()=>{ S.current = shift(S.current, 1); save(); renderDay(); };
@@ -1124,6 +1284,33 @@ function renderHistory(){
 }
 
 /* ---------------- backup ---------------- */
+/* ---------------- sync controls ---------------- */
+function paintSyncInputs(){
+  const c = syncCfg();
+  const u = document.getElementById('syncUrl'), k = document.getElementById('syncKeyIn');
+  if(u) u.value = c.url || '';
+  if(k) k.value = c.key || '';
+  paintSync();
+}
+document.getElementById('syncGen').onclick = ()=>{
+  document.getElementById('syncKeyIn').value = newSyncKey();
+};
+document.getElementById('syncSave').onclick = ()=>{
+  const url = document.getElementById('syncUrl').value.trim();
+  const key = document.getElementById('syncKeyIn').value.trim();
+  if(url && !/^https:\/\//.test(url) && !/^http:\/\/localhost/.test(url))
+    return alert('The address must start with https:// — anything else sends your routine in the clear.');
+  if(key && key.length < 20)
+    return alert('That key is too short to be a secret. Use Generate key.');
+  setSyncCfg({...syncCfg(), url, key});
+  syncMsg = ''; paintSync();
+  if(syncOn()) syncNow(true);
+};
+document.getElementById('syncGo').onclick = ()=>{
+  if(!syncOn()) return alert('Set the address and key first.');
+  syncNow(true);
+};
+
 document.getElementById('exportBtn').onclick = ()=>{
   const blob = new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
   const a = document.createElement('a');
@@ -1160,6 +1347,8 @@ if('serviceWorker' in navigator){
 document.getElementById('ver').textContent = VER;
 if(!S.days[todayKey()] && Object.keys(S.days).length===0) S.current = todayKey();
 loadCalendar();
+resetShadow();          // whatever loaded from disk is the baseline, not an edit
+if(syncOn()) syncNow(false);
 showTab('today');
 save();
 </script>
