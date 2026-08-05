@@ -61,11 +61,32 @@
   .tabs{display:flex;gap:4px;background:var(--panel-2);padding:3px;border-radius:10px;overflow:auto;max-width:100%}
   .tabs button{border:0;background:transparent;padding:7px 12px;border-radius:8px;color:var(--muted);font-weight:600;white-space:nowrap}
   .tabs button[aria-selected="true"]{background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+  .swipehint{display:none;text-align:center;color:var(--muted);font-size:11px;margin:-6px 0 10px}
+  /* ---------- phone: tabs move to the thumb, targets grow ----------
+     Below 620px the app stops being a shrunken desktop page: navigation drops
+     to a fixed bottom bar within thumb reach, hit targets grow to ~44px, and
+     the day is changed by swiping rather than aiming at small arrows. */
   @media(max-width:620px){
-    .wordmark{display:none}          /* the mark alone carries it on small screens */
-    .tabs{flex:1;justify-content:space-between}
-    .tabs button{flex:1;text-align:center;padding:7px 4px;font-size:13px}
+    .tabs{
+      position:fixed; left:0; right:0; bottom:0; z-index:60;
+      background:var(--panel); border-top:1px solid var(--line); border-radius:0;
+      padding:5px 4px calc(5px + env(safe-area-inset-bottom));
+      gap:2px; overflow:visible; box-shadow:0 -2px 14px rgba(0,0,0,.10);
+    }
+    .tabs button{flex:1;text-align:center;padding:9px 2px;font-size:11px;font-weight:700;border-radius:9px}
+    .tabs button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:none}
+    main{padding-bottom:104px}
+
+    .item{padding:11px 10px}
+    .item .tick{width:26px;height:26px}
+    .item .grip{padding:6px 7px;font-size:17px}
+    .daybar .btn.sm{padding:9px 13px}
+    .btn.sm{padding:8px 12px}
+
+    .calrail{order:-1}               /* what's booked matters before what's planned */
+    .swipehint{display:block}
   }
+  @media(min-width:621px){ .daywrap .calrail{order:0} }
   main{max-width:1100px;margin:0 auto;padding:14px 14px 90px}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .spacer{flex:1}
@@ -196,6 +217,7 @@
       <button class="btn sm" id="nextDay">›</button>
     </div>
     <div class="progress"><i id="prog"></i></div>
+    <div class="swipehint">swipe left or right to change day</div>
 
     <div class="row" style="margin-bottom:12px">
       <button class="btn sm" id="addToDay">+ Add activity to this day</button>
@@ -321,7 +343,7 @@
 
 <script>
 "use strict";
-const VER = "v1.3";
+const VER = "v1.4";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -684,6 +706,28 @@ document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) loadCal
 document.getElementById('prevDay').onclick = ()=>{ S.current = shift(S.current,-1); save(); renderDay(); };
 document.getElementById('nextDay').onclick = ()=>{ S.current = shift(S.current, 1); save(); renderDay(); };
 document.getElementById('todayBtn').onclick = ()=>{ S.current = todayKey(); save(); renderDay(); };
+/* Swipe left/right to move a day, on touch devices only. Deliberately strict:
+   a gesture must be mostly horizontal, far enough to be intentional, and quick
+   — otherwise it collides with scrolling and with dragging an activity. */
+(function(){
+  const pane = document.getElementById('tab-today');
+  let x0 = null, y0 = 0, t0 = 0;
+  pane.addEventListener('touchstart', e=>{
+    if(e.touches.length !== 1) { x0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = e.timeStamp;
+  }, {passive:true});
+  pane.addEventListener('touchend', e=>{
+    if(x0 === null) return;
+    const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+    x0 = null;
+    if(e.timeStamp - t0 > 700) return;                     // a slow drag isn't a swipe
+    if(Math.abs(dx) < 60) return;                          // too small to mean it
+    if(Math.abs(dy) > Math.abs(dx) * 0.7) return;          // that was a scroll
+    S.current = shift(S.current, dx < 0 ? 1 : -1);
+    save(); renderDay();
+  }, {passive:true});
+})();
+
 document.getElementById('addToDay').onclick = ()=> openItemDialog(null, ensureDay(S.current));
 document.getElementById('resetDay').onclick = ()=>{
   if(!confirm('Rebuild this day from the base template? Anything added or carried over for this day is lost.')) return;

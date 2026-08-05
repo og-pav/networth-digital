@@ -1,6 +1,6 @@
 /* NetWorth Routine — offline shell.
    Bump CACHE whenever index.html or the assets change, so phones pick it up. */
-const CACHE = 'nwr-v4';
+const CACHE = 'nwr-v5';
 const CORE = [
   './',
   './index.html',
@@ -36,9 +36,12 @@ self.addEventListener('fetch', e=>{
   }
 
   // The page itself: try the network so updates land, fall back to cache offline.
+  // cache:'reload' is the important bit — a plain fetch() can still be answered
+  // by the browser's own HTTP cache, which silently pins the app to an old
+  // version even after CACHE is bumped here.
   if(req.mode === 'navigate'){
     e.respondWith(
-      fetch(req)
+      fetch(new Request(req.url, {cache:'reload', credentials:'same-origin'}))
         .then(res=>{
           const copy = res.clone();
           caches.open(CACHE).then(c=>c.put('./index.html', copy));
