@@ -70,6 +70,32 @@ in `sw.js` when you change `index.html`, or phones keep serving the old copy.
 Open the Pages URL in Safari → **Share → Add to Home Screen**. It gets the gold
 ring icon, opens full screen with no browser chrome, and works offline.
 
+## Clients
+
+The **Clients** tab keeps a to-do list per client, separate from the daily
+routine. Ticking a task clears it into "cleared recently" (kept 30 days, with an
+↩ to put it back). Client names and task titles edit in place — click them.
+Client lists sync between devices the same way days do: per client, last edit
+wins.
+
+### Clearing tasks from outside
+
+Any system that can send a webhook — a GHL workflow, a Zap, a script — can clear
+or add a client task. It needs the sync Worker (below) deployed. Send a POST to
+`https://<your-worker>/task` with the sync key in the `X-Sync-Key` header (or as
+`"key"` in the body if the sender can't set headers):
+
+```json
+{"action":"complete","client":"Acme Pty Ltd","task":"send proposal"}
+{"action":"add","client":"Acme Pty Ltd","task":"chase signed agreement"}
+```
+
+`complete` matches the open task by title — exact first, then contains — so a
+workflow can send `"task":"proposal"` and clear "Send proposal". `add` creates
+the client too if it doesn't exist yet. Events queue on the Worker for a week;
+every device applies them at its next sync and remembers which it has applied,
+so two devices pulling the same queue don't double up.
+
 ## How a day gets built
 
 Every day starts from the base template, then adapts:

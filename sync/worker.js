@@ -13,6 +13,11 @@
  *   PUT  /state     -> store (merged client-side; the Worker never merges)
  *   GET  /calendar  -> {} or the stored calendar
  *   PUT  /calendar  -> store
+ *   POST /task      -> queue a client-task event from an outside system
+ *                      {action:'complete'|'add', client:'Acme', task:'send proposal'}
+ *                      (key in X-Sync-Key, or as "key" in the body for senders
+ *                      that can't set headers)
+ *   GET  /inbox     -> {events:[...]} — the app pulls and applies these on sync
  *   GET  /health    -> {ok:true}
  */
 
@@ -21,7 +26,7 @@ const MIN_KEY   = 20;                // reject trivially guessable keys
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Methods': 'GET,PUT,OPTIONS',
+  'Access-Control-Allow-Methods': 'GET,PUT,POST,OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type,X-Sync-Key',
   'Access-Control-Max-Age':       '86400',
 };
@@ -48,8 +53,40 @@ export default {
 
     if (path === '/health') return json({ ok: true });
 
-    const slot = path === '/state' ? 'state' : path === '/calendar' ? 'calendar' : null;
+    // Outside systems (a GHL workflow, a Zap) queue task events here; the app
+    // pulls /inbox on every sync and applies them. Events live a week — long
+    // enough for a phone that's been off, short enough not to accumulate.
+    if (path === '/task' && request.method === 'POST') {
+      let body;
+      try { body = await request.json(); }
+      catch { return json({ error: 'body is not JSON' }, 400); }
+
+      const secret = request.headers.get('X-Sync-Key') || String(body.key || '');
+      if (secret.length < MIN_KEY) return json({ error: 'missing or too-short sync key' }, 401);
+
+      const action = String(body.action || '').toLowerCase();
+      const client = String(body.client || '').trim().slice(0, 200);
+      const task   = String(body.task   || '').trim().slice(0, 500);
+      if (!['complete', 'add'].includes(action)) return json({ error: 'action must be "complete" or "add"' }, 400);
+      if (!client || !task) return json({ error: 'client and task are both required' }, 400);
+
+      const key = await kvKey(secret, 'inbox');
+      let inbox;
+      try { inbox = JSON.parse(await env.ROUTINE.get(key)) || {}; } catch { inbox = {}; }
+      const weekAgo = Date.now() - 7 * 86400000;
+      const events = (Array.isArray(inbox.events) ? inbox.events : [])
+        .filter(e => e && e.ts > weekAgo)
+        .slice(-299);
+      events.push({ id: crypto.randomUUID(), ts: Date.now(), action, client, task });
+      await env.ROUTINE.put(key, JSON.stringify({ events }));
+      return json({ ok: true, queued: events.length });
+    }
+
+    const slot = path === '/state' ? 'state' : path === '/calendar' ? 'calendar'
+               : path === '/inbox' ? 'inbox' : null;
     if (!slot) return json({ error: 'not found' }, 404);
+    if (slot === 'inbox' && request.method !== 'GET')
+      return json({ error: 'inbox is read-only — queue events via POST /task' }, 405);
 
     const secret = request.headers.get('X-Sync-Key') || '';
     if (secret.length < MIN_KEY) return json({ error: 'missing or too-short sync key' }, 401);

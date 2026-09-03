@@ -186,6 +186,24 @@
   .bars{display:flex;gap:3px;align-items:flex-end;height:26px}
   .bars i{width:7px;background:var(--ok);border-radius:2px;display:block}
 
+  /* ---------- clients ---------- */
+  .clientgrid{display:grid;gap:12px;grid-template-columns:1fr;align-items:start}
+  @media(min-width:820px){ .clientgrid{grid-template-columns:1fr 1fr} }
+  .client{padding:12px}
+  .client .chd{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .client .cname{font-weight:800;font-size:15px;flex:1;min-width:0;overflow-wrap:anywhere;cursor:text}
+  .client .cname input{font-weight:800;padding:4px 8px}
+  .ctask .title{cursor:text}
+  .ctask .title input{padding:4px 8px}
+  .caddrow{display:flex;gap:6px;margin-top:8px}
+  .caddrow input{flex:1}
+  .clearedhead{border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:600;
+    padding:6px 2px 0;text-align:left;width:100%}
+  .cleared .item{opacity:.55}
+  .cleared .item .title{text-decoration:line-through;cursor:default}
+  .hooknote code{background:var(--panel-2);border-radius:6px;padding:1px 5px;font-size:12px;overflow-wrap:anywhere}
+  .hooknote pre{background:var(--panel-2);border-radius:9px;padding:10px;font-size:12px;overflow-x:auto;margin:8px 0 0}
+
   footer{max-width:1100px;margin:0 auto;padding:0 14px 30px;color:var(--muted);font-size:12px}
   .hide{display:none !important}
   dialog{border:0;border-radius:14px;padding:0;background:var(--panel);color:var(--text);box-shadow:var(--shadow);width:min(460px,92vw)}
@@ -207,6 +225,7 @@
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="today" aria-selected="true">Today</button>
       <button role="tab" data-tab="review" aria-selected="false">End of day</button>
+      <button role="tab" data-tab="clients" aria-selected="false">Clients</button>
       <button role="tab" data-tab="template" aria-selected="false">Template</button>
       <button role="tab" data-tab="history" aria-selected="false">History</button>
     </nav>
@@ -275,6 +294,22 @@
       <button class="btn primary" id="genTomorrow">Generate tomorrow's plan →</button>
       <span class="sub" style="margin:0" id="genHint"></span>
     </div>
+  </section>
+
+  <!-- ============ CLIENTS ============ -->
+  <section id="tab-clients" class="hide">
+    <h2>Clients</h2>
+    <p class="sub">A to-do list per client. Ticking a task clears it off the list —
+       by hand here, or automatically when an outside system reports it done.</p>
+
+    <div class="row" style="margin-bottom:12px">
+      <input type="text" id="newClient" placeholder="Client name" style="max-width:280px" enterkeyhint="done">
+      <button class="btn sm" id="addClient">+ Add client</button>
+    </div>
+
+    <div class="clientgrid" id="clientList"></div>
+
+    <div class="card" style="padding:12px;margin-top:18px" id="hookInfo"></div>
   </section>
 
   <!-- ============ TEMPLATE ============ -->
@@ -368,7 +403,7 @@
 
 <script>
 "use strict";
-const VER = "v1.5";
+const VER = "v1.6";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -398,12 +433,21 @@ function stampChanges(){
     if(SHADOW.__tpl !== undefined || !S.tplUpdated) S.tplUpdated = now;
     SHADOW.__tpl = tsig;
   }
+  Object.keys(S.clients || {}).forEach(id=>{
+    const sig = clientSig(id), sk = '__cl_' + id;
+    if(SHADOW[sk] !== sig){
+      if(SHADOW[sk] !== undefined || !S.clients[id].updated) S.clients[id].updated = now;
+      SHADOW[sk] = sig;
+    }
+  });
 }
+const clientSig = id => JSON.stringify({...S.clients[id], updated: 0});
 // Adopt a state as-is without treating it as edited (used after a merge).
 function resetShadow(){
   SHADOW = {};
   Object.keys(S.days || {}).forEach(k=>{ SHADOW[k] = daySig(k); });
   SHADOW.__tpl = JSON.stringify([S.template, S.cats]);
+  Object.keys(S.clients || {}).forEach(id=>{ SHADOW['__cl_'+id] = clientSig(id); });
 }
 
 /* ---------------- storage ---------------- */
@@ -466,6 +510,17 @@ function mergeState(local, remote){
     if(remote.carry && remote.carry[k])        out.carry[k] = remote.carry[k];
     if(remote.pendingAdds && remote.pendingAdds[k]) out.pendingAdds[k] = remote.pendingAdds[k];
   });
+
+  // Clients merge one by one, like days. A deleted client survives as a
+  // tombstone so the deletion wins here instead of the client resurrecting.
+  out.clients = out.clients || {};
+  Object.keys(remote.clients || {}).forEach(id=>{
+    const r = remote.clients[id], l = out.clients[id];
+    if(!l || (r.updated||0) > (l.updated||0)) out.clients[id] = r;
+  });
+  // Which webhook events were already applied merges by union — replaying an
+  // event on the other device would double up its work.
+  out.hookApplied = [...new Set([...(local.hookApplied||[]), ...(remote.hookApplied||[])])].slice(-500);
   return out;
 }
 
@@ -485,6 +540,10 @@ async function syncNow(manual){
     S = merged;
     resetShadow();                       // a merge result is not an edit
     try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+
+    // Apply queued webhook events before pushing, so an externally cleared
+    // task is already cleared in the copy the other device will pull.
+    await pullHooks();
 
     const put = await fetch(base + '/state', {method:'PUT', headers: head, body: JSON.stringify(S)});
     if(!put.ok) throw new Error('push failed: ' + put.status);
@@ -579,6 +638,7 @@ function seed(){
       }
     },
     days:{}, note:{}, pendingAdds:{}, carry:{},
+    clients:{}, hookApplied:[],
     current: todayKey()
   };
 }
@@ -622,6 +682,20 @@ migrate();
 if(!S.pendingAdds) S.pendingAdds = {};
 if(!S.carry) S.carry = {};
 if(!S.note) S.note = {};
+if(!S.clients) S.clients = {};
+if(!S.hookApplied) S.hookApplied = [];
+
+/* Housekeeping the client lists can't do for themselves: cleared tasks fall off
+   after 30 days, and a deleted client's tombstone (kept so the deletion wins a
+   sync merge) is dropped once every device must have seen it. */
+(function(){
+  const now = Date.now(), DAY = 86400000;
+  Object.keys(S.clients).forEach(id=>{
+    const c = S.clients[id];
+    if(c.deleted){ if((now - (c.updated||0)) > 60*DAY) delete S.clients[id]; return; }
+    c.tasks = (c.tasks||[]).filter(t => !t.done || (now - (t.doneAt||0)) < 30*DAY);
+  });
+})();
 
 const catById = id => S.cats.find(c=>c.id===id) || {name:'—',colour:'#8a94a3'};
 const profileFor = k => isWeekend(k) ? 'weekend' : 'weekday';
@@ -712,7 +786,7 @@ function ensureDay(k){
 }
 
 /* ---------------- tabs ---------------- */
-const tabs = ['today','review','template','history'];
+const tabs = ['today','review','clients','template','history'];
 function showTab(t){
   tabs.forEach(x=>{
     document.getElementById('tab-'+x).classList.toggle('hide', x!==t);
@@ -721,6 +795,7 @@ function showTab(t){
   });
   if(t==='today') renderDay();
   if(t==='review') renderReview();
+  if(t==='clients'){ renderClients(); pullHooks().then(ch=>{ if(ch) renderClients(); }); }
   if(t==='template'){ renderTemplate(); paintSyncInputs(); }
   if(t==='history') renderHistory();
 }
@@ -1138,6 +1213,236 @@ document.getElementById('genTomorrow').onclick = ()=>{
   showTab('today');
 };
 
+/* ---------------- CLIENTS ----------------
+   One to-do list per client, separate from the daily routine. Completion means
+   clearing: a ticked task drops off the active list into "cleared recently"
+   (kept 30 days, restorable) rather than vanishing outright, because a webhook
+   can tick things too and a silent disappearance is indistinguishable from a
+   bug. Expanded/collapsed state is per render, not saved — it's not data. */
+const OPEN_CLEARED = new Set();
+
+const activeClients = () => Object.values(S.clients).filter(c=>!c.deleted)
+  .sort((a,b)=>a.name.localeCompare(b.name));
+
+function renderClients(){
+  const wrap = document.getElementById('clientList');
+  wrap.innerHTML = '';
+  const list = activeClients();
+  if(!list.length)
+    wrap.innerHTML = `<div class="sub" style="margin:0">No clients yet — add the first one above.</div>`;
+  list.forEach(c=>wrap.appendChild(clientCard(c)));
+  paintHookInfo();
+}
+
+// Swap a text span for an input; commit on Enter or blur, cancel on Escape.
+function inlineEdit(span, value, commit){
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.value = value;
+  span.replaceWith(inp);
+  inp.focus(); inp.select();
+  let done = false;
+  const finish = ok=>{
+    if(done) return; done = true;
+    commit(ok ? inp.value.trim() : null);
+  };
+  inp.onblur = ()=>finish(true);
+  inp.onkeydown = e=>{
+    if(e.key==='Enter') finish(true);
+    if(e.key==='Escape') finish(false);
+  };
+}
+
+function clientCard(c){
+  const el = document.createElement('div');
+  el.className = 'card client';
+  const open = (c.tasks||[]).filter(t=>!t.done);
+  const cleared = (c.tasks||[]).filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+
+  const hd = document.createElement('div');
+  hd.className = 'chd';
+  hd.innerHTML = `<span class="cname">${esc(c.name)}</span>
+    <span class="pill">${open.length ? open.length + ' open' : 'all clear'}</span>
+    <button class="btn sm ghost danger" title="Delete client">✕</button>`;
+  hd.querySelector('.cname').onclick = function(){
+    inlineEdit(this, c.name, v=>{ if(v) c.name = v; save(); renderClients(); });
+  };
+  hd.querySelector('button').onclick = ()=>{
+    if(!confirm(`Delete ${c.name} and their tasks? This removes them on every device.`)) return;
+    S.clients[c.id] = {id:c.id, deleted:true};
+    save(); renderClients();
+  };
+  el.appendChild(hd);
+
+  const list = document.createElement('div');
+  list.className = 'ctasks items';
+  if(!open.length){
+    const e = document.createElement('div'); e.className='empty'; e.textContent='nothing outstanding';
+    list.appendChild(e);
+  }
+  open.forEach(t=>{
+    const row = document.createElement('div');
+    row.className = 'item ctask';
+    row.style.setProperty('--c', 'var(--gold)');
+    row.innerHTML = `
+      <button class="tick" title="Done — clear it">​</button>
+      <span class="title">${esc(t.title)}</span>
+      ${t.src==='hook' ? `<span class="pill">from webhook</span>` : ''}
+      <button class="btn sm ghost danger" title="Delete task">✕</button>`;
+    row.querySelector('.tick').onclick = ()=>{
+      t.done = true; t.doneAt = Date.now();
+      save(); renderClients();
+    };
+    row.querySelector('.title').onclick = function(){
+      inlineEdit(this, t.title, v=>{ if(v) t.title = v; save(); renderClients(); });
+    };
+    row.querySelector('.danger').onclick = ()=>{
+      c.tasks = c.tasks.filter(x=>x.id!==t.id);
+      save(); renderClients();
+    };
+    list.appendChild(row);
+  });
+  el.appendChild(list);
+
+  const add = document.createElement('div');
+  add.className = 'caddrow';
+  add.innerHTML = `<input type="text" placeholder="Add a task" enterkeyhint="done">
+    <button class="btn sm">Add</button>`;
+  const inp = add.querySelector('input');
+  const commit = ()=>{
+    const v = inp.value.trim(); if(!v) return;
+    c.tasks.push({id:uid(), title:v, done:false, src:'manual', created:Date.now()});
+    inp.value = '';
+    save(); renderClients();
+  };
+  add.querySelector('button').onclick = commit;
+  inp.onkeydown = e=>{ if(e.key==='Enter') commit(); };
+  el.appendChild(add);
+
+  if(cleared.length){
+    const btn = document.createElement('button');
+    btn.className = 'clearedhead';
+    btn.textContent = (OPEN_CLEARED.has(c.id)?'▾':'▸') + ` cleared recently (${cleared.length})`;
+    btn.onclick = ()=>{
+      OPEN_CLEARED.has(c.id) ? OPEN_CLEARED.delete(c.id) : OPEN_CLEARED.add(c.id);
+      renderClients();
+    };
+    el.appendChild(btn);
+    if(OPEN_CLEARED.has(c.id)){
+      const cl = document.createElement('div');
+      cl.className = 'cleared items';
+      cl.style.marginTop = '6px';
+      cleared.slice(0,20).forEach(t=>{
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.style.setProperty('--c','var(--ok)');
+        row.innerHTML = `<span class="title">${esc(t.title)}</span>
+          ${t.doneBy==='hook' ? `<span class="pill">cleared by webhook</span>` : ''}
+          <button class="btn sm ghost" title="Put it back">↩</button>`;
+        row.querySelector('button').onclick = ()=>{
+          t.done = false; delete t.doneAt; delete t.doneBy;
+          save(); renderClients();
+        };
+        cl.appendChild(row);
+      });
+      el.appendChild(cl);
+    }
+  }
+  return el;
+}
+
+document.getElementById('addClient').onclick = ()=>{
+  const inp = document.getElementById('newClient');
+  const name = inp.value.trim();
+  if(!name) return;
+  const id = uid();
+  S.clients[id] = {id, name, tasks:[], created:Date.now()};
+  inp.value = '';
+  save(); renderClients();
+};
+document.getElementById('newClient').onkeydown = e=>{
+  if(e.key==='Enter') document.getElementById('addClient').click();
+};
+
+/* ----- external triggers -----
+   Outside systems can't reach a page that lives in a browser, so they talk to
+   the sync Worker instead: POST /task queues an event, and every device applies
+   the queue when it syncs. Events carry ids and each applied id is remembered
+   (and synced), so two devices pulling the same queue don't do the work twice. */
+async function pullHooks(){
+  const c = syncCfg();
+  if(!c.url || !c.key) return false;
+  try{
+    const r = await fetch(c.url.replace(/\/+$/,'') + '/inbox',
+                          {headers:{'X-Sync-Key': c.key}, cache:'no-store'});
+    if(!r.ok) return false;
+    const inbox = await r.json();
+    const evs = Array.isArray(inbox.events) ? inbox.events : [];
+    const seen = new Set(S.hookApplied || []);
+    let changed = false;
+    evs.forEach(ev=>{
+      if(!ev || !ev.id || seen.has(ev.id)) return;
+      seen.add(ev.id);              // an event that matches nothing must not retry forever
+      if(applyHook(ev)) changed = true;
+    });
+    S.hookApplied = [...seen].slice(-500);
+    if(changed) save();
+    return changed;
+  }catch(e){ return false; }
+}
+
+function applyHook(ev){
+  const want = String(ev.client||'').trim().toLowerCase();
+  const text = String(ev.task||'').trim();
+  if(!want || !text) return false;
+  let client = activeClients().find(c=>c.name.trim().toLowerCase()===want);
+
+  if(ev.action === 'add'){
+    if(!client){
+      const id = uid();
+      client = S.clients[id] = {id, name:String(ev.client).trim(), tasks:[], created:Date.now()};
+    }
+    // The same task text twice is almost always a retried webhook, not two jobs.
+    if(client.tasks.some(t=>!t.done && t.title.trim().toLowerCase()===text.toLowerCase())) return false;
+    client.tasks.push({id:uid(), title:text, done:false, src:'hook', created:Date.now()});
+    return true;
+  }
+
+  if(ev.action === 'complete'){
+    if(!client) return false;
+    const openT = client.tasks.filter(t=>!t.done);
+    const low = text.toLowerCase();
+    const hit = openT.find(t=>t.title.trim().toLowerCase()===low)
+             || openT.find(t=>t.title.toLowerCase().includes(low));
+    if(!hit) return false;
+    hit.done = true; hit.doneAt = Date.now(); hit.doneBy = 'hook';
+    return true;
+  }
+  return false;
+}
+
+function paintHookInfo(){
+  const box = document.getElementById('hookInfo');
+  if(!box) return;
+  const c = syncCfg();
+  if(!c.url || !c.key){
+    box.innerHTML = `<label class="f">External triggers</label>
+      <div class="sub" style="margin:0">Set up sync on the Template tab first — outside systems
+      clear and add tasks through the sync worker.</div>`;
+    return;
+  }
+  const base = esc(c.url.replace(/\/+$/,''));
+  box.className = 'card hooknote';
+  box.style.padding = '12px';
+  box.innerHTML = `<label class="f">External triggers</label>
+    <div class="sub" style="margin:0 0 4px">Have any outside system (a GHL workflow, a Zap, a script)
+      send a POST to <code>${base}/task</code> with the sync key in the
+      <code>X-Sync-Key</code> header. The task clears — or appears — on every device at its next sync.</div>
+    <pre>{"action":"complete","client":"Acme Pty Ltd","task":"send proposal"}
+{"action":"add","client":"Acme Pty Ltd","task":"chase signed agreement"}</pre>
+    <div class="sub" style="margin:6px 0 0">"complete" matches the task by title (exact first, then contains).
+      "add" creates the client too if it doesn't exist yet.</div>`;
+}
+
 /* ---------------- TEMPLATE ---------------- */
 function renderTemplate(){
   const T = tplOf(EDIT_PROFILE);
@@ -1327,6 +1632,7 @@ document.getElementById('importFile').onchange = e=>{
       const d = JSON.parse(r.result);
       if(!d.template || !d.cats) throw new Error('not a routine backup');
       S = d; S.pendingAdds = S.pendingAdds||{}; S.carry = S.carry||{}; S.note = S.note||{};
+      S.clients = S.clients||{}; S.hookApplied = S.hookApplied||[];
       save(); showTab('today');
       alert('Backup restored.');
     }catch(err){ alert('Could not read that file: '+err.message); }
