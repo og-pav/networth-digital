@@ -6,7 +6,7 @@ compatibility_date = "2026-01-01"
 # Paste the printed id below, then:  npx wrangler deploy
 [[kv_namespaces]]
 binding = "ROUTINE"
-id = "PASTE_NAMESPACE_ID_HERE"
+id = "9219e1003c4345f19719e2ef76ac55f4"
 
 # `wrangler dev` uses a local namespace automatically, so the endpoint can be
 # tested end to end before any Cloudflare account exists.
