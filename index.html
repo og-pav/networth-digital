@@ -50,7 +50,7 @@
     padding-top:calc(10px + env(safe-area-inset-top));
   }
   .bar{display:flex;align-items:center;gap:10px;max-width:1320px;margin:0 auto}
-  .brand{margin-right:auto;display:flex;gap:11px;align-items:center;min-width:0}
+  .brand{margin-right:auto;display:flex;gap:11px;align-items:center;min-width:0;cursor:pointer;border:0;background:none;padding:0;text-align:left}
   .brand img{height:40px;width:auto;display:block;flex:none}
   @media(max-width:620px){ .brand img{height:32px} }
   .brand .lt{display:block} .brand .dk{display:none}
@@ -69,14 +69,18 @@
      to a fixed bottom bar within thumb reach, hit targets grow to ~44px, and
      the day is changed by swiping rather than aiming at small arrows. */
   @media(max-width:620px){
-    .tabs{
+    /* Only the NAVIGATION bar drops to the bottom. The selector must stay
+       nav.tabs: the Template page's weekday/weekend switcher shares the .tabs
+       class, and a bare .tabs rule pinned it to the same spot — on top of the
+       nav, which made it impossible to leave the Template page on a phone. */
+    nav.tabs{
       position:fixed; left:0; right:0; bottom:0; z-index:60;
       background:var(--panel); border-top:1px solid var(--line); border-radius:0;
       padding:5px 4px calc(5px + env(safe-area-inset-bottom));
       gap:2px; overflow:visible; box-shadow:0 -2px 14px rgba(0,0,0,.10);
     }
-    .tabs button{flex:1;text-align:center;padding:9px 2px;font-size:11px;font-weight:700;border-radius:9px}
-    .tabs button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:none}
+    nav.tabs button{flex:1;text-align:center;padding:9px 2px;font-size:11px;font-weight:700;border-radius:9px}
+    nav.tabs button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:none}
     main{padding-bottom:104px}
 
     .item{padding:11px 10px}
@@ -235,12 +239,12 @@
 
 <header>
   <div class="bar">
-    <div class="brand">
+    <button class="brand" id="brandHome" title="Back to today" type="button">
       <img class="lt" src="assets/logo-lockup.svg" alt="" width="46" height="26">
       <img class="dk" src="assets/logo-lockup-reverse.svg" alt="" width="46" height="26">
       <span class="wordmark"><b>NetWorth</b> <i>Routine</i>
         <small id="storeWarn" class="hide">running without saved storage</small></span>
-    </div>
+    </button>
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="today" aria-selected="true">Today</button>
       <button role="tab" data-tab="review" aria-selected="false">End of day</button>
@@ -430,7 +434,7 @@
 
 <script>
 "use strict";
-const VER = "v1.8";
+const VER = "v1.9";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -845,6 +849,8 @@ function showTab(t){
   if(t==='history') renderHistory();
 }
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+// The logo is always a way home, whatever state any page is in.
+document.getElementById('brandHome').onclick = ()=>{ S.current = todayKey(); save(); showTab('today'); };
 
 /* ---------------- TODAY ---------------- */
 function renderDay(){
