@@ -49,12 +49,14 @@
     border-bottom:1px solid var(--line); padding:10px 14px calc(10px);
     padding-top:calc(10px + env(safe-area-inset-top));
   }
-  .bar{display:flex;align-items:center;gap:10px;max-width:1100px;margin:0 auto}
-  .brand{margin-right:auto;display:flex;gap:9px;align-items:center;min-width:0}
-  .brand img{height:30px;width:auto;display:block;flex:none}
+  .bar{display:flex;align-items:center;gap:10px;max-width:1320px;margin:0 auto}
+  .brand{margin-right:auto;display:flex;gap:11px;align-items:center;min-width:0}
+  .brand img{height:40px;width:auto;display:block;flex:none}
+  @media(max-width:620px){ .brand img{height:32px} }
   .brand .lt{display:block} .brand .dk{display:none}
   @media (prefers-color-scheme:dark){ .brand .lt{display:none} .brand .dk{display:block} }
-  .wordmark{font-weight:800;letter-spacing:-.015em;line-height:1.1;white-space:nowrap}
+  .wordmark{font-weight:800;letter-spacing:-.015em;line-height:1.1;white-space:nowrap;font-size:19px}
+  @media(max-width:620px){ .wordmark{font-size:16px} }
   .wordmark b{font-weight:800}
   .wordmark i{font-style:normal;color:var(--gold)}
   .brand small{font-weight:500;color:var(--muted);display:block;font-size:11px;letter-spacing:0}
@@ -87,7 +89,7 @@
     .swipehint{display:block}
   }
   @media(min-width:621px){ .daywrap .calrail{order:0} }
-  main{max-width:1100px;margin:0 auto;padding:14px 14px 90px}
+  main{max-width:1320px;margin:0 auto;padding:14px 14px 90px}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .spacer{flex:1}
   h2{font-size:17px;margin:0 0 2px}
@@ -111,6 +113,7 @@
 
   .slots{display:grid;gap:12px;grid-template-columns:1fr}
   @media(min-width:820px){ .slots{grid-template-columns:1fr 1fr} }
+  @media(min-width:1280px){ .slots{grid-template-columns:repeat(3,minmax(0,1fr))} }
 
   .slot{padding:10px 10px 8px}
   .slot.drop{outline:2px dashed var(--accent);outline-offset:-3px;background:var(--accent-soft)}
@@ -140,6 +143,7 @@
   /* ---------- calendar rail ---------- */
   .daywrap{display:grid;gap:12px;grid-template-columns:1fr;align-items:start}
   @media(min-width:1000px){ .daywrap{grid-template-columns:minmax(0,1fr) 300px} }
+  @media(min-width:1280px){ .daywrap{grid-template-columns:minmax(0,1fr) 330px} }
   .calrail{padding:10px}
   .calrail h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:2px 4px 8px;display:flex;gap:8px;align-items:center}
   .calrail h3 .tot{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:600;font-size:12px}
@@ -172,7 +176,9 @@
   .catrow{display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line)}
   .catrow:last-child{border-bottom:0}
 
-  .tmplslot{padding:10px;margin-bottom:10px}
+  #tmplSlots{display:grid;gap:10px;grid-template-columns:1fr;align-items:start}
+  @media(min-width:1000px){ #tmplSlots{grid-template-columns:1fr 1fr} }
+  .tmplslot{padding:10px;margin-bottom:0}
   .tmplslot .hd{display:flex;gap:8px;align-items:center;margin-bottom:8px}
   .tmplslot .hd input[type=text]{font-weight:700}
   .tmplslot .hd input[type=time]{width:132px;flex:none}
@@ -189,6 +195,7 @@
   /* ---------- clients ---------- */
   .clientgrid{display:grid;gap:12px;grid-template-columns:1fr;align-items:start}
   @media(min-width:820px){ .clientgrid{grid-template-columns:1fr 1fr} }
+  @media(min-width:1240px){ .clientgrid{grid-template-columns:repeat(3,minmax(0,1fr))} }
   .client{padding:12px}
   .client .chd{display:flex;align-items:center;gap:8px;margin-bottom:8px}
   .client .cname{font-weight:800;font-size:15px;flex:1;min-width:0;overflow-wrap:anywhere;cursor:text}
@@ -204,7 +211,12 @@
   .hooknote code{background:var(--panel-2);border-radius:6px;padding:1px 5px;font-size:12px;overflow-wrap:anywhere}
   .hooknote pre{background:var(--panel-2);border-radius:9px;padding:10px;font-size:12px;overflow-x:auto;margin:8px 0 0}
 
-  footer{max-width:1100px;margin:0 auto;padding:0 14px 30px;color:var(--muted);font-size:12px}
+  .logrow{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .logrow:last-child{border-bottom:0}
+  .logrow .when{color:var(--muted);white-space:nowrap;font-size:12px;min-width:118px}
+  .logrow .what{flex:1;min-width:0;overflow-wrap:anywhere}
+
+  footer{max-width:1320px;margin:0 auto;padding:0 14px 30px;color:var(--muted);font-size:12px}
   .hide{display:none !important}
   dialog{border:0;border-radius:14px;padding:0;background:var(--panel);color:var(--text);box-shadow:var(--shadow);width:min(460px,92vw)}
   dialog::backdrop{background:rgba(0,0,0,.45)}
@@ -372,6 +384,14 @@
     <h2>History</h2>
     <p class="sub">Every generated day, newest first.</p>
     <div id="histList"></div>
+
+    <h2 style="margin-top:26px">Activity log</h2>
+    <p class="sub">Every change on every device — ticks, edits, client tasks and webhook events.
+       The newest 150 show here; the export carries the lot.</p>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn sm" id="exportLog">Export log (.csv)</button>
+    </div>
+    <div class="card" style="padding:6px 14px" id="logList"></div>
   </section>
 </main>
 
@@ -403,9 +423,19 @@
 
 <script>
 "use strict";
-const VER = "v1.6";
+const VER = "v1.7";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
+
+/* ---------------- activity log ----------------
+   Every discrete action is appended here: ticks, edits, client tasks, webhook
+   events, generated days. It syncs (merged by union, so nothing from either
+   device is lost), rides along in backups, shows on the History tab and
+   exports as a .csv. Capped at 2000 entries. Call sites save() themselves. */
+function logEvent(type, text, by){
+  (S.log = S.log || []).push({id:uid(), at:Date.now(), type, by:by||'user', text});
+  if(S.log.length > 2000) S.log = S.log.slice(-2000);
+}
 
 /* ---------------- change stamping ----------------
    Sync merges per day, which needs to know when each day last changed. Rather
@@ -521,6 +551,12 @@ function mergeState(local, remote){
   // Which webhook events were already applied merges by union — replaying an
   // event on the other device would double up its work.
   out.hookApplied = [...new Set([...(local.hookApplied||[]), ...(remote.hookApplied||[])])].slice(-500);
+
+  // The activity log merges by union too: both devices' entries survive,
+  // ordered by time. Last-write-wins would erase one device's history.
+  const seenLog = {};
+  [...(local.log||[]), ...(remote.log||[])].forEach(e=>{ if(e && e.id) seenLog[e.id] = e; });
+  out.log = Object.values(seenLog).sort((a,b)=>(a.at||0)-(b.at||0)).slice(-2000);
   return out;
 }
 
@@ -638,7 +674,7 @@ function seed(){
       }
     },
     days:{}, note:{}, pendingAdds:{}, carry:{},
-    clients:{}, hookApplied:[],
+    clients:{}, hookApplied:[], log:[],
     current: todayKey()
   };
 }
@@ -684,6 +720,8 @@ if(!S.carry) S.carry = {};
 if(!S.note) S.note = {};
 if(!S.clients) S.clients = {};
 if(!S.hookApplied) S.hookApplied = [];
+if(!S.log) S.log = [];
+if(S.log.length > 2000) S.log = S.log.slice(-2000);
 
 /* Housekeeping the client lists can't do for themselves: cleared tasks fall off
    after 30 days, and a deleted client's tombstone (kept so the deletion wins a
@@ -881,6 +919,7 @@ function itemEl(it, day){
   el.querySelector('.tick').onclick = e=>{
     e.stopPropagation();
     it.status = it.status==='done' ? 'pending' : 'done';
+    logEvent('day.tick', (it.status==='done'?'Ticked off':'Unticked') + ` "${it.title}" — ${pretty(day.date)}`);
     save(); renderDay();
   };
   el.onclick = ()=> openItemDialog(it, day);
@@ -1009,7 +1048,9 @@ document.getElementById('todayBtn').onclick = ()=>{ S.current = todayKey(); save
 document.getElementById('addToDay').onclick = ()=> openItemDialog(null, ensureDay(S.current));
 document.getElementById('resetDay').onclick = ()=>{
   if(!confirm('Rebuild this day from the base template? Anything added or carried over for this day is lost.')) return;
-  S.days[S.current] = buildFromTemplate(S.current); save(); renderDay();
+  S.days[S.current] = buildFromTemplate(S.current);
+  logEvent('day.reset', `Rebuilt ${pretty(S.current)} from the template`);
+  save(); renderDay();
 };
 
 /* ---------------- drag & drop (pointer based: works on touch + mouse) ---------------- */
@@ -1053,6 +1094,7 @@ function makeDraggable(el, it, day){
           it.slotId = target;
           // move to end of that slot's ordering
           day.items = day.items.filter(x=>x.id!==it.id).concat([it]);
+          logEvent('day.move', `Moved "${it.title}" to ${slotById(target)?.name || 'another slot'} on ${pretty(day.date)}`);
           save();
         }
         renderDay();
@@ -1103,14 +1145,14 @@ dlg.addEventListener('close', ()=>{
 
   if(mode === 'template'){
     const T = tplOf(EDIT_PROFILE);
-    if(v==='delete'){ T.acts = T.acts.filter(a=>a.id!==it.id); }
-    else if(it){ Object.assign(it,{title,slotId,cat,min,rec}); }
-    else if(title){ T.acts.push({id:uid(),slotId,title,cat,rec,min}); }
+    if(v==='delete'){ T.acts = T.acts.filter(a=>a.id!==it.id); logEvent('template.delete', `Removed "${it.title}" from the ${EDIT_PROFILE} template`); }
+    else if(it){ Object.assign(it,{title,slotId,cat,min,rec}); logEvent('template.edit', `Edited "${title}" in the ${EDIT_PROFILE} template`); }
+    else if(title){ T.acts.push({id:uid(),slotId,title,cat,rec,min}); logEvent('template.add', `Added "${title}" to the ${EDIT_PROFILE} template`); }
     save(); renderTemplate();
   } else {
-    if(v==='delete'){ day.items = day.items.filter(x=>x.id!==it.id); }
-    else if(it){ Object.assign(it,{title,slotId,cat,min,rec}); }
-    else if(title){ day.items.push({id:uid(),src:null,slotId,title,cat,min,rec,status:'pending',carried:0}); }
+    if(v==='delete'){ day.items = day.items.filter(x=>x.id!==it.id); logEvent('day.delete', `Removed "${it.title}" from ${pretty(day.date)}`); }
+    else if(it){ Object.assign(it,{title,slotId,cat,min,rec}); logEvent('day.edit', `Edited "${title}" on ${pretty(day.date)}`); }
+    else if(title){ day.items.push({id:uid(),src:null,slotId,title,cat,min,rec,status:'pending',carried:0}); logEvent('day.add', `Added "${title}" to ${pretty(day.date)}`); }
     save(); renderDay();
   }
   dlgCtx = null;
@@ -1198,6 +1240,8 @@ document.getElementById('addTomorrow').onclick = ()=>{
                              cat:a.cat, rec:'always', min:null});
   }
   (S.pendingAdds[k] = S.pendingAdds[k] || []).push(a);
+  logEvent('review.add', `Queued "${a.title}" for ${pretty(shift(k,1))}` +
+    (a.rec!=='once' ? ` and added it to the ${a.prof} template` : ''));
   document.getElementById('newTitle').value = '';
   save(); renderPendingAdds();
 };
@@ -1209,6 +1253,7 @@ document.getElementById('genTomorrow').onclick = ()=>{
   S.days[nk] = buildNextDay(k);
   S.days[k].reviewed = true;
   S.current = nk;
+  logEvent('day.generate', `Generated the plan for ${pretty(nk)} from ${pretty(k)}'s review`);
   save();
   showTab('today');
 };
@@ -1264,11 +1309,15 @@ function clientCard(c){
     <span class="pill">${open.length ? open.length + ' open' : 'all clear'}</span>
     <button class="btn sm ghost danger" title="Delete client">✕</button>`;
   hd.querySelector('.cname').onclick = function(){
-    inlineEdit(this, c.name, v=>{ if(v) c.name = v; save(); renderClients(); });
+    inlineEdit(this, c.name, v=>{
+      if(v && v !== c.name){ logEvent('client.rename', `Renamed client "${c.name}" to "${v}"`); c.name = v; }
+      save(); renderClients();
+    });
   };
   hd.querySelector('button').onclick = ()=>{
     if(!confirm(`Delete ${c.name} and their tasks? This removes them on every device.`)) return;
     S.clients[c.id] = {id:c.id, deleted:true};
+    logEvent('client.delete', `Deleted client "${c.name}"`);
     save(); renderClients();
   };
   el.appendChild(hd);
@@ -1290,13 +1339,18 @@ function clientCard(c){
       <button class="btn sm ghost danger" title="Delete task">✕</button>`;
     row.querySelector('.tick').onclick = ()=>{
       t.done = true; t.doneAt = Date.now();
+      logEvent('task.clear', `Cleared "${t.title}" for ${c.name}`);
       save(); renderClients();
     };
     row.querySelector('.title').onclick = function(){
-      inlineEdit(this, t.title, v=>{ if(v) t.title = v; save(); renderClients(); });
+      inlineEdit(this, t.title, v=>{
+        if(v && v !== t.title){ logEvent('task.edit', `Edited task "${t.title}" to "${v}" for ${c.name}`); t.title = v; }
+        save(); renderClients();
+      });
     };
     row.querySelector('.danger').onclick = ()=>{
       c.tasks = c.tasks.filter(x=>x.id!==t.id);
+      logEvent('task.delete', `Deleted task "${t.title}" for ${c.name}`);
       save(); renderClients();
     };
     list.appendChild(row);
@@ -1311,6 +1365,7 @@ function clientCard(c){
   const commit = ()=>{
     const v = inp.value.trim(); if(!v) return;
     c.tasks.push({id:uid(), title:v, done:false, src:'manual', created:Date.now()});
+    logEvent('task.add', `Added task "${v}" for ${c.name}`);
     inp.value = '';
     save(); renderClients();
   };
@@ -1340,6 +1395,7 @@ function clientCard(c){
           <button class="btn sm ghost" title="Put it back">↩</button>`;
         row.querySelector('button').onclick = ()=>{
           t.done = false; delete t.doneAt; delete t.doneBy;
+          logEvent('task.restore', `Restored "${t.title}" for ${c.name}`);
           save(); renderClients();
         };
         cl.appendChild(row);
@@ -1356,6 +1412,7 @@ document.getElementById('addClient').onclick = ()=>{
   if(!name) return;
   const id = uid();
   S.clients[id] = {id, name, tasks:[], created:Date.now()};
+  logEvent('client.add', `Added client "${name}"`);
   inp.value = '';
   save(); renderClients();
 };
@@ -1404,6 +1461,7 @@ function applyHook(ev){
     // The same task text twice is almost always a retried webhook, not two jobs.
     if(client.tasks.some(t=>!t.done && t.title.trim().toLowerCase()===text.toLowerCase())) return false;
     client.tasks.push({id:uid(), title:text, done:false, src:'hook', created:Date.now()});
+    logEvent('task.add', `Webhook added "${text}" for ${client.name}`, 'webhook');
     return true;
   }
 
@@ -1415,6 +1473,7 @@ function applyHook(ev){
              || openT.find(t=>t.title.toLowerCase().includes(low));
     if(!hit) return false;
     hit.done = true; hit.doneAt = Date.now(); hit.doneBy = 'hook';
+    logEvent('task.clear', `Webhook cleared "${hit.title}" for ${client.name}`, 'webhook');
     return true;
   }
   return false;
@@ -1471,6 +1530,7 @@ function renderTemplate(){
       if(!confirm(`Delete "${sl.name}" and its activities from the template?`)) return;
       T.slots = T.slots.filter(x=>x.id!==sl.id);
       T.acts = T.acts.filter(a=>a.slotId!==sl.id);
+      logEvent('template.slot', `Deleted slot "${sl.name}" from the ${EDIT_PROFILE} template`);
       save(); renderTemplate();
     };
     box.appendChild(hd);
@@ -1531,6 +1591,7 @@ function renderTemplate(){
 
 document.getElementById('addSlot').onclick = ()=>{
   tplOf(EDIT_PROFILE).slots.push({id:uid(), name:'New slot', time:''});
+  logEvent('template.slot', `Added a slot to the ${EDIT_PROFILE} template`);
   save(); renderTemplate();
 };
 
@@ -1550,6 +1611,7 @@ document.getElementById('copyProfile').onclick = ()=>{
   const acts = src.acts.map(a=>({id:uid(), slotId:idMap[a.slotId], title:a.title,
                                  cat:a.cat, rec:a.rec, min:a.min}));
   S.template[to] = {slots, acts};
+  logEvent('template.copy', `Replaced the ${to} template with a copy of the ${from} one`);
   save();
   EDIT_PROFILE = to;
   renderTemplate();
@@ -1586,7 +1648,37 @@ function renderHistory(){
     }
     box.appendChild(el);
   });
+  renderLog();
 }
+
+function renderLog(){
+  const lw = document.getElementById('logList');
+  if(!lw) return;
+  const entries = (S.log||[]).slice(-150).reverse();
+  if(!entries.length){
+    lw.innerHTML = `<div class="sub" style="margin:8px 0">Nothing logged yet — it fills as you use the app.</div>`;
+    return;
+  }
+  lw.innerHTML = entries.map(e=>{
+    let when = '';
+    try{ when = new Date(e.at).toLocaleString('en-AU',
+      {day:'numeric', month:'short', hour:'numeric', minute:'2-digit'}); }catch(err){}
+    return `<div class="logrow"><span class="when">${esc(when)}</span>` +
+      `<span class="what">${esc(e.text||'')}</span>` +
+      (e.by && e.by!=='user' ? `<span class="pill">${esc(e.by)}</span>` : '') + `</div>`;
+  }).join('');
+}
+
+document.getElementById('exportLog').onclick = ()=>{
+  const q = s => '"' + String(s==null?'':s).replace(/"/g,'""') + '"';
+  const rows = [['time','type','by','detail']].concat((S.log||[]).map(e=>
+    [new Date(e.at).toISOString(), e.type||'', e.by||'user', e.text||'']));
+  const blob = new Blob([rows.map(r=>r.map(q).join(',')).join('\r\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'routine-log-' + todayKey() + '.csv';
+  a.click(); URL.revokeObjectURL(a.href);
+};
 
 /* ---------------- backup ---------------- */
 /* ---------------- sync controls ---------------- */
@@ -1632,7 +1724,8 @@ document.getElementById('importFile').onchange = e=>{
       const d = JSON.parse(r.result);
       if(!d.template || !d.cats) throw new Error('not a routine backup');
       S = d; S.pendingAdds = S.pendingAdds||{}; S.carry = S.carry||{}; S.note = S.note||{};
-      S.clients = S.clients||{}; S.hookApplied = S.hookApplied||[];
+      S.clients = S.clients||{}; S.hookApplied = S.hookApplied||[]; S.log = S.log||[];
+      logEvent('backup.import', 'Restored everything from a backup file');
       save(); showTab('today');
       alert('Backup restored.');
     }catch(err){ alert('Could not read that file: '+err.message); }
@@ -1641,7 +1734,9 @@ document.getElementById('importFile').onchange = e=>{
 };
 document.getElementById('wipeBtn').onclick = ()=>{
   if(!confirm('Erase the template, every day and all history? This cannot be undone.')) return;
-  S = seed(); save(); showTab('today');
+  S = seed();
+  logEvent('wipe', 'Erased everything and started fresh');
+  save(); showTab('today');
 };
 
 /* ---------------- go ---------------- */

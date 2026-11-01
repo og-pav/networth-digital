@@ -160,19 +160,13 @@ Worker with a KV namespace, on the free tier.
 
 ### Deploy it
 
+**Deployed 2026-11-01** at `https://networth-routine-sync.networth-digital.workers.dev`
+(KV namespace is wired into `wrangler.toml`). To update it after editing `worker.js`:
+
 ```bash
 cd ~/daily-routine/sync
-npx wrangler login                      # opens a browser, approve once
-npx wrangler kv namespace create ROUTINE
-```
-
-Paste the printed `id` into `wrangler.toml`, then:
-
-```bash
 npx wrangler deploy
 ```
-
-It prints a URL like `https://networth-routine-sync.<you>.workers.dev`.
 
 ### Turn it on
 
