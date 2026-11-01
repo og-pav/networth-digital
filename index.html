@@ -227,6 +227,14 @@
   .logrow .when{color:var(--muted);white-space:nowrap;font-size:12px;min-width:118px}
   .logrow .what{flex:1;min-width:0;overflow-wrap:anywhere}
 
+  /* pull-to-refresh pill */
+  #ptr{position:fixed;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translate(-50%,0);
+    z-index:80;background:var(--panel);border:1px solid var(--line);border-radius:99px;
+    box-shadow:var(--shadow);padding:7px 15px;font-size:12px;font-weight:700;color:var(--muted);
+    opacity:0;pointer-events:none;transition:opacity .15s}
+  #ptr.show{opacity:1}
+  body{overscroll-behavior-y:contain}
+
   footer{max-width:1320px;margin:0 auto;padding:0 14px 30px;color:var(--muted);font-size:12px}
   .hide{display:none !important}
   dialog{border:0;border-radius:14px;padding:0;background:var(--panel);color:var(--text);box-shadow:var(--shadow);width:min(460px,92vw)}
@@ -434,7 +442,7 @@
 
 <script>
 "use strict";
-const VER = "v1.9";
+const VER = "v1.10";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -1786,6 +1794,59 @@ document.getElementById('wipeBtn').onclick = ()=>{
   logEvent('wipe', 'Erased everything and started fresh');
   save(); showTab('today');
 };
+
+/* ---------------- pull to refresh ----------------
+   Drag down from the very top of any page: syncs, checks for a new app
+   version, and reloads — the same effect as closing and reopening, without
+   leaving. Touch only; strict about direction so it never fights the
+   day-change swipe or ordinary scrolling. */
+(function(){
+  const bar = document.createElement('div');
+  bar.id = 'ptr'; bar.textContent = 'pull to refresh';
+  document.body.appendChild(bar);
+  const THRESH = 70;
+  let x0=null, y0=null, pull=0, active=false, busy=false;
+
+  document.addEventListener('touchstart', e=>{
+    if(busy || window.scrollY > 0 || e.touches.length !== 1){ y0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    pull = 0; active = false;
+  }, {passive:true});
+
+  document.addEventListener('touchmove', e=>{
+    if(y0 === null || busy) return;
+    const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+    if(!active){
+      if(Math.abs(dx) > Math.abs(dy)){ y0 = null; return; }   // that's a swipe
+      if(dy <= 8 || window.scrollY > 0) return;               // not a pull (yet)
+      if(document.querySelector('dialog[open]')) { y0 = null; return; }
+      active = true;
+    }
+    e.preventDefault();
+    pull = Math.max(0, Math.min(dy * 0.5, 110));
+    bar.style.transform = `translate(-50%, ${pull}px)`;
+    bar.classList.add('show');
+    bar.textContent = pull >= THRESH ? 'release to refresh' : 'pull to refresh';
+  }, {passive:false});
+
+  document.addEventListener('touchend', async ()=>{
+    if(!active){ y0 = null; return; }
+    const go = pull >= THRESH;
+    y0 = null; active = false;
+    if(!go){ bar.classList.remove('show'); bar.style.transform = ''; return; }
+    busy = true;
+    bar.textContent = 'refreshing…';
+    try{
+      // Nudge the service worker to fetch any new version in the background…
+      const reg = await (navigator.serviceWorker && navigator.serviceWorker.getRegistration
+                         ? navigator.serviceWorker.getRegistration() : null);
+      if(reg) await reg.update().catch(()=>{});
+      // …and bring the data fully up to date before reloading.
+      if(syncOn()) await syncNow(false);
+    }catch(err){}
+    location.reload();
+  });
+})();
 
 /* ---------------- go ---------------- */
 // Offline support. Only registers over https or localhost — a plain file://
