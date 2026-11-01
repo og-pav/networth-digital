@@ -21,6 +21,13 @@ from zoneinfo import ZoneInfo
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT  = os.path.join(ROOT, "calendar.json")
 CONF = os.path.expanduser("~/.config/networth-routine/calendar.conf")
+# The work account (admin@networth-digital.com) is a Workspace account whose
+# secret iCal feed is disabled, so its events arrive via --events instead.
+# They're cached here so the 15-minute ICS cron keeps them in the rail
+# between refreshes — but only while reasonably fresh, because a cancelled
+# call must eventually drop out rather than haunt the day.
+EV_CACHE = os.path.expanduser("~/.config/networth-routine/events-cache.json")
+EV_FRESH_HOURS = 36
 # The real tz database, not a fixed offset: Adelaide is +10:30 during daylight
 # saving (Oct–Apr) and +9:30 the rest of the year. A fixed +9:30 put every
 # call an hour early all summer.
@@ -68,12 +75,20 @@ def from_events_payload(path):
             continue
         link = ev.get("conferenceUrl") or (
             ev.get("location") if str(ev.get("location", "")).startswith("http") else None)
+        # GHL names every booking after its template ("Intro Call with Pav"),
+        # so the person you're meeting is only in the guest list — put them
+        # in the title or the rail shows three identical calls.
+        title = clean_title(ev.get("summary"))
+        gname = next((a.get("displayName", "").strip() for a in guests
+                      if a.get("displayName", "").strip()), None)
+        if gname and gname.lower() not in title.lower():
+            title += f" — {gname}"
         out.append({
             "date":  s.strftime("%Y-%m-%d"),
             "start": s.strftime("%H:%M"),
             "end":   e.strftime("%H:%M"),
             "mins":  int((e - s).total_seconds() // 60),
-            "title": clean_title(ev.get("summary")),
+            "title": title,
             "type":  classify(ev.get("summary"), bool(guests), bool(link)),
             "link":  link,
         })
@@ -164,6 +179,10 @@ def push_to_worker(payload):
 
 def write(events):
     days = {}
+    seen = set()
+    events = [e for e in events
+              if not ((e["date"], e["start"], e["title"]) in seen
+                      or seen.add((e["date"], e["start"], e["title"])))]
     for ev in sorted(events, key=lambda x: (x["date"], x["start"])):
         days.setdefault(ev.pop("date"), []).append(ev)
     payload = {
@@ -185,10 +204,29 @@ if __name__ == "__main__":
     ap.add_argument("--ics",    help="Secret iCal feed URL (overrides the config file)")
     a = ap.parse_args()
 
+    evs = []
     if a.events:
-        write(from_events_payload(a.events))
-    else:
-        url = a.ics or conf_get("ICS_URL")
-        if not url:
-            sys.exit(f"No source. Pass --events FILE, or put ICS_URL=... in {CONF}")
-        write(from_ics(url))
+        evs = from_events_payload(a.events)
+        try:
+            os.makedirs(os.path.dirname(EV_CACHE), exist_ok=True)
+            json.dump({"at": datetime.now(TZ).timestamp(), "events": evs}, open(EV_CACHE, "w"))
+        except Exception as e:
+            print(f"could not cache events: {e}", file=sys.stderr)
+    elif os.path.exists(EV_CACHE):
+        try:
+            c = json.load(open(EV_CACHE))
+            age_h = (datetime.now(TZ).timestamp() - c.get("at", 0)) / 3600
+            if age_h < EV_FRESH_HOURS:
+                evs = c.get("events", [])
+        except Exception:
+            pass
+
+    url = a.ics or conf_get("ICS_URL")
+    if url:
+        try:
+            evs += from_ics(url)
+        except Exception as e:
+            print(f"ICS fetch failed: {e}", file=sys.stderr)
+    if not evs and not url:
+        sys.exit(f"No source. Pass --events FILE, or put ICS_URL=... in {CONF}")
+    write(evs)
