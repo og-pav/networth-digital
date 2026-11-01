@@ -16,11 +16,15 @@ it carries client names and live Google Meet join links.
 """
 import argparse, json, os, re, sys, urllib.request
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT  = os.path.join(ROOT, "calendar.json")
 CONF = os.path.expanduser("~/.config/networth-routine/calendar.conf")
-TZ   = timezone(timedelta(hours=9, minutes=30))     # Australia/Adelaide
+# The real tz database, not a fixed offset: Adelaide is +10:30 during daylight
+# saving (Oct–Apr) and +9:30 the rest of the year. A fixed +9:30 put every
+# call an hour early all summer.
+TZ   = ZoneInfo("Australia/Adelaide")
 SELF = "admin@networth-digital.com"
 
 # Booking types, most specific first — "Proposal/Strategy Call" must not be
@@ -79,12 +83,16 @@ def unfold(text):
     """iCal folds long lines with a leading space; join them back up."""
     return re.sub(r"\r?\n[ \t]", "", text)
 
-def ics_dt(val):
-    val = val.strip()
+def ics_dt(val, tzid=None):
+    val = (val or "").strip()
     if val.endswith("Z"):
         return datetime.strptime(val, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc).astimezone(TZ)
     if "T" in val:
-        return datetime.strptime(val, "%Y%m%dT%H%M%S").replace(tzinfo=TZ)
+        # An event booked in another timezone carries TZID; honour it, then
+        # express the result in Adelaide time like everything else.
+        try: src = ZoneInfo(tzid) if tzid else TZ
+        except Exception: src = TZ
+        return datetime.strptime(val, "%Y%m%dT%H%M%S").replace(tzinfo=src).astimezone(TZ)
     return None                                        # date-only == all-day
 
 def from_ics(url, days=21):
@@ -97,9 +105,14 @@ def from_ics(url, days=21):
         def field(name):
             m = re.search(rf"^{name}(?:;[^:\n]*)?:(.*)$", body, re.M)
             return m.group(1).strip() if m else None
+        def timed(name):
+            m = re.search(rf"^{name}((?:;[^:\n]*)?):(.*)$", body, re.M)
+            if not m: return None
+            tzm = re.search(r"TZID=([^;:]+)", m.group(1) or "")
+            return ics_dt(m.group(2), tzm.group(1) if tzm else None)
         if (field("STATUS") or "").upper() == "CANCELLED":
             continue
-        s, e = ics_dt(field("DTSTART") or ""), ics_dt(field("DTEND") or "")
+        s, e = timed("DTSTART"), timed("DTEND")
         if not s or not e or not (lo <= s <= hi):
             continue
         summary = (field("SUMMARY") or "").replace("\\,", ",").replace("\\n", " ")
@@ -138,7 +151,10 @@ def push_to_worker(payload):
     req = urllib.request.Request(
         url.rstrip("/") + "/calendar",
         data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json", "X-Sync-Key": key},
+        # Cloudflare's bot protection blocks the default "Python-urllib" agent
+        # at the edge with a 403 before the Worker ever runs.
+        headers={"Content-Type": "application/json", "X-Sync-Key": key,
+                 "User-Agent": "networth-routine-sync/1.0"},
         method="PUT")
     try:
         with urllib.request.urlopen(req, timeout=20) as r:

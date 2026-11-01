@@ -200,6 +200,13 @@
   .client .chd{display:flex;align-items:center;gap:8px;margin-bottom:8px}
   .client .cname{font-weight:800;font-size:15px;flex:1;min-width:0;overflow-wrap:anywhere;cursor:text}
   .client .cname input{font-weight:800;padding:4px 8px}
+  .client.paused{opacity:.65}
+  .cinfo{color:var(--muted);font-size:12px;margin:-4px 0 10px 2px;cursor:text;overflow-wrap:anywhere}
+  .cinfo input{font-size:12px;padding:4px 8px}
+  .statuschip{cursor:pointer}
+  .csection{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+    font-weight:700;margin:16px 2px 8px;grid-column:1/-1}
+  .csection:first-child{margin-top:0}
   .ctask .title{cursor:text}
   .ctask .title input{padding:4px 8px}
   .caddrow{display:flex;gap:6px;margin-top:8px}
@@ -423,7 +430,7 @@
 
 <script>
 "use strict";
-const VER = "v1.7";
+const VER = "v1.8";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -1268,14 +1275,27 @@ const OPEN_CLEARED = new Set();
 
 const activeClients = () => Object.values(S.clients).filter(c=>!c.deleted)
   .sort((a,b)=>a.name.localeCompare(b.name));
+const openCount = c => (c.tasks||[]).filter(t=>!t.done).length;
 
 function renderClients(){
   const wrap = document.getElementById('clientList');
   wrap.innerHTML = '';
-  const list = activeClients();
-  if(!list.length)
+  const all = activeClients();
+  if(!all.length)
     wrap.innerHTML = `<div class="sub" style="margin:0">No clients yet — add the first one above.</div>`;
-  list.forEach(c=>wrap.appendChild(clientCard(c)));
+  // The ones with work outstanding come first; paused clients sink to their
+  // own section so the working list stays short.
+  const live = all.filter(c=>c.status!=='paused')
+    .sort((a,b)=>openCount(b)-openCount(a) || a.name.localeCompare(b.name));
+  const paused = all.filter(c=>c.status==='paused');
+  live.forEach(c=>wrap.appendChild(clientCard(c)));
+  if(paused.length){
+    const h = document.createElement('div');
+    h.className = 'csection';
+    h.textContent = 'Paused';
+    wrap.appendChild(h);
+    paused.forEach(c=>wrap.appendChild(clientCard(c)));
+  }
   paintHookInfo();
 }
 
@@ -1303,11 +1323,18 @@ function clientCard(c){
   const open = (c.tasks||[]).filter(t=>!t.done);
   const cleared = (c.tasks||[]).filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
 
+  if(c.status==='paused') el.classList.add('paused');
   const hd = document.createElement('div');
   hd.className = 'chd';
   hd.innerHTML = `<span class="cname">${esc(c.name)}</span>
+    <span class="pill statuschip" title="Click to ${c.status==='paused'?'reactivate':'pause'}">${c.status==='paused'?'paused':'active'}</span>
     <span class="pill">${open.length ? open.length + ' open' : 'all clear'}</span>
     <button class="btn sm ghost danger" title="Delete client">✕</button>`;
+  hd.querySelector('.statuschip').onclick = ()=>{
+    c.status = c.status==='paused' ? 'active' : 'paused';
+    logEvent('client.status', `${c.status==='paused'?'Paused':'Reactivated'} client "${c.name}"`);
+    save(); renderClients();
+  };
   hd.querySelector('.cname').onclick = function(){
     inlineEdit(this, c.name, v=>{
       if(v && v !== c.name){ logEvent('client.rename', `Renamed client "${c.name}" to "${v}"`); c.name = v; }
@@ -1321,6 +1348,21 @@ function clientCard(c){
     save(); renderClients();
   };
   el.appendChild(hd);
+
+  // One line of who-and-what under the name: contact, mobile, services.
+  const info = document.createElement('div');
+  info.className = 'cinfo';
+  info.textContent = c.info || 'add contact details / notes';
+  info.onclick = function(){
+    inlineEdit(this, c.info || '', v=>{
+      if(v !== null && v !== (c.info||'')){
+        c.info = v;
+        logEvent('client.info', `Updated details for "${c.name}"`);
+      }
+      save(); renderClients();
+    });
+  };
+  el.appendChild(info);
 
   const list = document.createElement('div');
   list.className = 'ctasks items';
