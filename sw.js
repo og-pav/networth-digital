@@ -1,6 +1,6 @@
 /* NetWorth Routine — offline shell.
    Bump CACHE whenever index.html or the assets change, so phones pick it up. */
-const CACHE = 'nwr-v12';
+const CACHE = 'nwr-v13';
 const CORE = [
   './',
   './index.html',

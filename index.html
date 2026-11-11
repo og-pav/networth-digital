@@ -228,6 +228,11 @@
   .logrow .what{flex:1;min-width:0;overflow-wrap:anywhere}
 
   /* pull-to-refresh pill */
+  #refreshBtn{border:1px solid var(--line);background:transparent;color:inherit;border-radius:10px;
+    width:34px;height:34px;font-size:17px;line-height:1;cursor:pointer;flex:0 0 auto;margin-left:8px}
+  #refreshBtn:hover{border-color:var(--gold)}
+  #refreshBtn.spin{animation:refspin .8s linear infinite;pointer-events:none;opacity:.6}
+  @keyframes refspin{to{transform:rotate(360deg)}}
   #ptr{position:fixed;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translate(-50%,0);
     z-index:80;background:var(--panel);border:1px solid var(--line);border-radius:99px;
     box-shadow:var(--shadow);padding:7px 15px;font-size:12px;font-weight:700;color:var(--muted);
@@ -260,6 +265,7 @@
       <button role="tab" data-tab="template" aria-selected="false">Template</button>
       <button role="tab" data-tab="history" aria-selected="false">History</button>
     </nav>
+    <button id="refreshBtn" title="Sync and refresh" type="button" aria-label="Sync and refresh">&#10227;</button>
   </div>
 </header>
 
@@ -442,7 +448,7 @@
 
 <script>
 "use strict";
-const VER = "v1.11";
+const VER = "v1.12";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -1815,6 +1821,31 @@ document.getElementById('wipeBtn').onclick = ()=>{
    version, and reloads — the same effect as closing and reopening, without
    leaving. Touch only; strict about direction so it never fights the
    day-change swipe or ordinary scrolling. */
+// One refresh routine for everyone: the touch pull on phones, the header
+// button on the Mac, and anything else that needs "fully up to date, now".
+async function hardRefresh(){
+  try{
+    const reg = await (navigator.serviceWorker && navigator.serviceWorker.getRegistration
+                       ? navigator.serviceWorker.getRegistration() : null);
+    if(reg) await reg.update().catch(()=>{});
+    if(syncOn()) await syncNow(false);
+  }catch(err){}
+  location.reload();
+}
+const refreshBtn = document.getElementById('refreshBtn');
+refreshBtn.onclick = ()=>{ refreshBtn.classList.add('spin'); hardRefresh(); };
+
+// Keep the data fresh without being asked: webhook tasks and edits from the
+// other device land within a minute while the app is open. Skipped while
+// something is being typed or a dialog is up, so a re-render never eats input.
+setInterval(()=>{
+  if(document.hidden || !syncOn() || syncing) return;
+  const a = document.activeElement;
+  if(a && (a.tagName==='INPUT' || a.tagName==='TEXTAREA' || a.isContentEditable)) return;
+  if(document.querySelector('dialog[open]')) return;
+  syncNow(false);
+}, 60000);
+
 (function(){
   const bar = document.createElement('div');
   bar.id = 'ptr'; bar.textContent = 'pull to refresh';
@@ -1851,15 +1882,7 @@ document.getElementById('wipeBtn').onclick = ()=>{
     if(!go){ bar.classList.remove('show'); bar.style.transform = ''; return; }
     busy = true;
     bar.textContent = 'refreshing…';
-    try{
-      // Nudge the service worker to fetch any new version in the background…
-      const reg = await (navigator.serviceWorker && navigator.serviceWorker.getRegistration
-                         ? navigator.serviceWorker.getRegistration() : null);
-      if(reg) await reg.update().catch(()=>{});
-      // …and bring the data fully up to date before reloading.
-      if(syncOn()) await syncNow(false);
-    }catch(err){}
-    location.reload();
+    await hardRefresh();
   });
 })();
 
