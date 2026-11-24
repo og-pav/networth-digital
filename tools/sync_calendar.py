@@ -21,8 +21,8 @@ from zoneinfo import ZoneInfo
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT  = os.path.join(ROOT, "calendar.json")
 CONF = os.path.expanduser("~/.config/networth-routine/calendar.conf")
-# The work account (admin@networth-digital.com) is a Workspace account whose
-# secret iCal feed is disabled, so its events arrive via --events instead.
+# The work Google account is a Workspace account whose secret iCal feed is
+# disabled, so its events arrive via --events instead.
 # They're cached here so the 15-minute ICS cron keeps them in the rail
 # between refreshes — but only while reasonably fresh, because a cancelled
 # call must eventually drop out rather than haunt the day.
@@ -32,7 +32,6 @@ EV_FRESH_HOURS = 36
 # saving (Oct–Apr) and +9:30 the rest of the year. A fixed +9:30 put every
 # call an hour early all summer.
 TZ   = ZoneInfo("Australia/Adelaide")
-SELF = "admin@networth-digital.com"
 
 # Booking types, most specific first — "Proposal/Strategy Call" must not be
 # caught by a looser rule, and onboarding must beat the generic meeting test.
