@@ -81,7 +81,7 @@ static NSString *const kScheme = @"nwroutine";
 #pragma mark - App
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, WKNavigationDelegate,
-                                   WKDownloadDelegate, WKUIDelegate>
+                                   WKDownloadDelegate, WKUIDelegate, WKScriptMessageHandler>
 @property (nonatomic, strong) NSWindow *window;
 @property (nonatomic, strong) WKWebView *webView;
 @end
@@ -97,6 +97,8 @@ static NSString *const kScheme = @"nwroutine";
     WKWebViewConfiguration *config = [WKWebViewConfiguration new];
     [config setURLSchemeHandler:handler forURLScheme:kScheme];
     config.websiteDataStore = [WKWebsiteDataStore defaultDataStore];   // persistent localStorage
+    // window.print() does nothing in a WKWebView, so the page asks the app instead.
+    [config.userContentController addScriptMessageHandler:self name:@"nwPrint"];
 
     self.webView = [[WKWebView alloc] initWithFrame:NSZeroRect configuration:config];
     self.webView.navigationDelegate = self;
@@ -171,6 +173,30 @@ static NSString *const kScheme = @"nwroutine";
     NSLog(@"download failed: %@", error.localizedDescription);
 }
 
+#pragma mark Printing
+// The week planner's Print button. The page's print stylesheet lays the week
+// out for one A4 landscape sheet; this just opens the system print panel on it.
+
+- (void)userContentController:(WKUserContentController *)userContentController
+      didReceiveScriptMessage:(WKScriptMessage *)message {
+    if (![message.name isEqualToString:@"nwPrint"]) return;
+    [self printPage];
+}
+
+- (void)printPage {
+    NSPrintInfo *info = [NSPrintInfo.sharedPrintInfo copy];
+    info.orientation = NSPaperOrientationLandscape;
+    info.topMargin = info.bottomMargin = info.leftMargin = info.rightMargin = 0;  // the page sets its own
+    info.horizontalPagination = NSPrintingPaginationModeFit;
+    info.verticallyCentered = NO;
+    NSPrintOperation *op = [self.webView printOperationWithPrintInfo:info];
+    op.showsPrintPanel = YES;
+    op.showsProgressPanel = YES;
+    // Without a frame the operation renders a blank sheet.
+    op.view.frame = self.webView.bounds;
+    [op runOperationModalForWindow:self.window delegate:nil didRunSelector:NULL contextInfo:NULL];
+}
+
 #pragma mark Menus
 // Without these there is no Cmd-Q, and no copy/paste in the text fields.
 
@@ -182,6 +208,7 @@ static NSString *const kScheme = @"nwroutine";
     [appMenu addItemWithTitle:@"About NetWorth Routine"
                        action:@selector(orderFrontStandardAboutPanel:) keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
+    [appMenu addItemWithTitle:@"Print…" action:@selector(printPage) keyEquivalent:@"p"];
     [appMenu addItemWithTitle:@"Hide NetWorth Routine" action:@selector(hide:) keyEquivalent:@"h"];
     [appMenu addItemWithTitle:@"Quit NetWorth Routine" action:@selector(terminate:) keyEquivalent:@"q"];
     appItem.submenu = appMenu;

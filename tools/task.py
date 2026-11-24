@@ -8,7 +8,9 @@ sync — nothing here touches a browser.
   task.py add "Client" "task text"          add a task under a client
   task.py done "Client" "task text"         clear a task (matches like the
                                             webhook: exact title, then contains)
-  task.py day YYYY-MM-DD "activity"         add a one-off activity to a day's plan
+  task.py day YYYY-MM-DD "activity" [HH:MM] add a one-off activity to a day's plan,
+                                            in the time block covering HH:MM
+                                            (default: the day's first block)
 
 Credentials come from ~/.config/networth-routine/calendar.conf (WORKER_URL,
 SYNC_KEY) — the same file the calendar sync uses. Nothing is stored in the repo.
@@ -50,7 +52,7 @@ def list_clients():
         for t in open_t:
             print(f"   · {t.get('title')}")
 
-def add_day(date, title):
+def add_day(date, title, at=None):
     st = call("/state")
     if not st.get("template"):
         sys.exit("synced state has no template yet — open the app once with sync on first")
@@ -68,7 +70,14 @@ def add_day(date, title):
              "title": a.get("title"), "cat": a.get("cat"), "min": a.get("min"),
              "rec": "always", "status": "pending", "carried": 0}
             for a in st["template"][prof].get("acts", []) if a.get("rec") == "always"]
-    slot = st["template"][day.get("profile", prof)]["slots"][0]["id"]
+    # A day re-timed in the week planner carries its own blocks.
+    blocks = sorted(day.get("slots") or st["template"][day.get("profile", prof)]["slots"],
+                    key=lambda s: s.get("time") or "99")
+    hit = blocks[0]
+    for b in blocks:
+        if at and (b.get("time") or "99") <= at:
+            hit = b
+    slot = hit["id"]
     cat  = st.get("cats", [{}])[0].get("id")
     day["items"].append({"id": uid(), "src": None, "slotId": slot, "title": title,
                          "cat": cat, "min": None, "rec": "manual",
@@ -77,7 +86,7 @@ def add_day(date, title):
     st.setdefault("log", []).append({"id": uid(), "at": day["updated"],
         "type": "day.add", "by": "claude", "text": f'Added "{title}" to {date}'})
     call("/state", json.dumps(st).encode())
-    print(f'added "{title}" to {date} (first slot — drag it where it belongs)')
+    print(f'added "{title}" to {date} in the "{hit.get("name")}" block')
 
 if __name__ == "__main__":
     a = sys.argv[1:]
@@ -86,5 +95,5 @@ if __name__ == "__main__":
     if a[0] == "list":                list_clients()
     elif a[0] == "add"  and len(a) == 3: post_task("add", a[1], a[2])
     elif a[0] == "done" and len(a) == 3: post_task("complete", a[1], a[2])
-    elif a[0] == "day"  and len(a) == 3: add_day(a[1], a[2])
+    elif a[0] == "day"  and len(a) in (3, 4): add_day(a[1], a[2], a[3] if len(a) == 4 else None)
     else: sys.exit(__doc__)

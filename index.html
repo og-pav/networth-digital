@@ -244,6 +244,99 @@
   #ptr.show{opacity:1}
   body{overscroll-behavior-y:contain}
 
+  /* ---------- week planner ----------
+     Seven days side by side on a 30-minute grid, midnight to midnight. Every
+     position is a multiple of --rh (one half-hour row), so print only has to
+     change that one number to fit the whole week on an A4 sheet. */
+  .wkbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .wkbar .date{font-weight:700;font-size:16px}
+  .wkbar .date span{display:block;font-weight:500;font-size:12px;color:var(--muted)}
+  .wkscroll{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);
+    box-shadow:var(--shadow);max-height:calc(100dvh - 200px);-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  @media(max-width:620px){ .wkscroll{max-height:calc(100dvh - 290px)} .wkbar .date{flex-basis:100%;order:-1} .wkbar .spacer{display:none} }
+  .wk{--rh:24px;display:grid;grid-template-columns:50px repeat(7,minmax(132px,1fr));min-width:974px}
+  .wkcorner{position:sticky;top:0;left:0;z-index:9;background:var(--panel);border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+  .wkhead{position:sticky;top:0;z-index:7;background:var(--panel);border:0;border-bottom:1px solid var(--line);
+    border-right:1px solid var(--line);padding:7px 4px;font-weight:800;font-size:13px;text-align:center;cursor:pointer}
+  .wkhead small{display:block;font-weight:600;font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wkhead.today{color:var(--accent);box-shadow:inset 0 -3px 0 var(--gold)}
+  .wkgut{position:sticky;left:0;z-index:6;background:var(--panel);border-right:1px solid var(--line);height:calc(var(--rh)*48)}
+  .wkgut span{position:absolute;right:5px;font-size:10px;font-weight:600;color:var(--muted);transform:translateY(-50%);white-space:nowrap}
+  .wkgut span.first{transform:none}
+  .wkcol{position:relative;height:calc(var(--rh)*48);border-right:1px solid var(--line)}
+  .wkcol.today{background:var(--accent-soft)}
+  /* the half-hour lines sit over the blocks, so every slot stays countable */
+  .wkcol::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:3;
+    background-image:linear-gradient(to bottom,rgba(127,140,170,.28) 1px,transparent 1px);background-size:100% var(--rh)}
+  .wkb{position:absolute;left:2px;right:2px;border-radius:6px;overflow:hidden;padding:2px 6px;font-size:11px;line-height:1.3;
+    font-weight:700;cursor:pointer;z-index:1;color:var(--text);text-align:left;border:0;
+    background:color-mix(in srgb,var(--c,#8a94a3) 24%,var(--panel));border-left:4px solid var(--c,#8a94a3)}
+  .wkb b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wkb.tall b{white-space:normal}
+  .wkb small{display:block;font-weight:600;color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wkb.lock{box-shadow:inset 0 0 0 2px var(--gold)}
+  .wkb.wrap{cursor:default;opacity:.6;border-left-style:dashed}
+  .wkb.tiny{padding:0 6px;font-size:9px;line-height:1.15}
+  .wke{position:absolute;left:36%;right:3px;border-radius:6px;padding:2px 5px;font-size:10px;line-height:1.25;font-weight:700;
+    background:var(--c,#6b7688);color:#fff;z-index:4;overflow:hidden;text-decoration:none;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+  .wke.clash{outline:2px solid var(--danger);outline-offset:1px}
+  .wknow{position:absolute;left:0;right:0;height:2px;background:var(--danger);z-index:5;pointer-events:none}
+  .wknow::before{content:"";position:absolute;left:-1px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--danger)}
+  .wklegend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+  .wklegend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .slot h3 .time{white-space:nowrap}
+  .lockchip{white-space:nowrap;text-transform:none;letter-spacing:0;font-weight:700;font-size:11px;color:var(--gold)}
+  .tmplslot .hd{flex-wrap:wrap}
+  .tmplslot .hd select{width:auto;flex:1;min-width:110px}
+  .tmplslot .hd .lockbtn[aria-pressed="true"]{color:var(--gold);border-color:var(--gold)}
+  @media(max-width:620px){ nav.tabs button{font-size:10.5px;padding:9px 1px} }
+
+  /* ---------- non-negotiables ---------- */
+  .habits{padding:10px;margin-bottom:12px;border-color:var(--gold)}
+  .habits h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);margin:2px 4px 8px;display:flex;gap:8px;align-items:center}
+  .habits h3 span{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:700;font-size:12px;color:var(--muted)}
+  .habits .hl{display:grid;gap:6px;grid-template-columns:1fr}
+  @media(min-width:820px){ .habits .hl{grid-template-columns:1fr 1fr} }
+  .habit .title{font-size:14px}
+  .habit input[type=number]{width:62px;flex:none;padding:5px 6px;text-align:center}
+  .habitrow{display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .habitrow:last-child{border-bottom:0}
+  .habitrow input[type=text]{flex:1;min-width:180px}
+  .habitrow input[type=number]{width:84px;flex:none}
+  .habitrow label{font-size:12px;font-weight:600;color:var(--muted);display:flex;gap:5px;align-items:center;white-space:nowrap}
+
+  #ptr .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--gold);
+    border-radius:50%;animation:refspin .7s linear infinite;vertical-align:-2px;margin-right:7px}
+
+  /* ---------- printing the week ----------
+     Only the planner prints: one A4 landscape sheet, light colours whatever
+     theme the screen is in. */
+  @media print{
+    @page{size:A4 landscape;margin:7mm}
+    :root{--bg:#fff;--panel:#fff;--panel-2:#f1f3f8;--line:#c3cad9;--text:#111827;--muted:#4b5565;
+      --accent:#223870;--accent-soft:#fff;--gold:#B1870F;--danger:#c33d3d;--shadow:none}
+    body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:0}
+    header,footer,#ptr,.noprint{display:none !important}
+    main{padding:0;max-width:none}
+    main>section{display:none !important}
+    main>section#tab-week{display:block !important}
+    .wkbar{margin-bottom:2mm}
+    .wkscroll{overflow:visible;max-height:none;border:0;box-shadow:none;border-radius:0}
+    .wk{--rh:3.3mm;min-width:0;grid-template-columns:10mm repeat(7,minmax(0,1fr));border:1px solid var(--line)}
+    .wkcorner,.wkhead,.wkgut{position:static}
+    .wkgut{position:relative}
+    .wkhead{padding:1mm;font-size:9pt}
+    .wkhead small{font-size:6.5pt}
+    .wkgut span{font-size:6pt}
+    .wkb{font-size:7pt;line-height:1.2;padding:.2mm 1.2mm;border-radius:1mm;border-left-width:1mm}
+    .wkb small{font-size:6pt}
+    .wkb.tiny{font-size:5pt;line-height:1.05;padding:0 1.2mm}
+    .wklegend{break-before:avoid}
+    .wke{font-size:6pt;box-shadow:none}
+    .wknow{display:none}
+    .wklegend{font-size:7pt;margin-top:2mm}
+  }
+
   footer{max-width:1320px;margin:0 auto;padding:0 14px 30px;color:var(--muted);font-size:12px}
   .hide{display:none !important}
   dialog{border:0;border-radius:14px;padding:0;background:var(--panel);color:var(--text);box-shadow:var(--shadow);width:min(460px,92vw)}
@@ -264,6 +357,7 @@
     </button>
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="today" aria-selected="true">Today</button>
+      <button role="tab" data-tab="week" aria-selected="false">Week</button>
       <button role="tab" data-tab="review" aria-selected="false">End of day</button>
       <button role="tab" data-tab="clients" aria-selected="false">Clients</button>
       <button role="tab" data-tab="template" aria-selected="false">Template</button>
@@ -291,10 +385,29 @@
       <button class="btn sm ghost" id="resetDay">Reset day from template</button>
     </div>
 
+    <div class="card habits hide" id="habitBox"></div>
+
     <div class="daywrap">
       <div class="slots" id="daySlots"></div>
       <aside class="card calrail" id="calRail"></aside>
     </div>
+  </section>
+
+  <!-- ============ WEEK ============ -->
+  <section id="tab-week" class="hide">
+    <div class="wkbar">
+      <button class="btn sm noprint" id="wkPrev">‹</button>
+      <div class="date" id="wkLabel">—<span id="wkMeta"></span></div>
+      <div class="spacer"></div>
+      <button class="btn sm noprint" id="wkAdd">+ Add block</button>
+      <button class="btn sm noprint" id="wkPrint">Print</button>
+      <button class="btn sm noprint" id="wkThis">This week</button>
+      <button class="btn sm noprint" id="wkNext">›</button>
+    </div>
+    <div class="wkscroll" id="wkScroll"><div class="wk" id="wkGrid"></div></div>
+    <div class="wklegend" id="wkLegend"></div>
+    <p class="sub noprint" style="margin-top:8px">Every row is 30 minutes. Tap a block to rename, re-time or recolour it,
+      for that day only or for the base template. A block runs until the next one starts.</p>
   </section>
 
   <!-- ============ REVIEW ============ -->
@@ -357,7 +470,8 @@
   <section id="tab-template" class="hide">
     <h2>Base templates</h2>
     <p class="sub">Weekdays and weekends run off separate templates. Each new day is built
-       from the matching one, then adapted by what you did the day before.</p>
+       from the matching one, then adapted by what you did the day before. Each slot is a time
+       block that runs until the next one starts — the Week tab lays them out on a 30-minute grid.</p>
 
     <div class="tabs" style="margin-bottom:12px;display:inline-flex" id="profTabs">
       <button data-prof="weekday" aria-selected="true">Weekday</button>
@@ -371,6 +485,14 @@
 
     <div class="row" style="margin:10px 0 22px">
       <button class="btn sm" id="addSlot">+ Add slot</button>
+    </div>
+
+    <h2>Non-negotiables</h2>
+    <p class="sub">Daily habits you tick off at the top of the Today tab. Give one a target and it
+       becomes a count instead (50 calls, say).</p>
+    <div class="card" style="padding:6px 12px" id="habitEdit"></div>
+    <div class="row" style="margin:10px 0 22px">
+      <button class="btn sm" id="addHabit">+ Add non-negotiable</button>
     </div>
 
     <h2>Colour categories</h2>
@@ -450,9 +572,32 @@
   </div>
 </form></dialog>
 
+<dialog id="blkDlg"><form method="dialog" class="dlg">
+  <h3 id="bTitle">Time block</h3>
+  <div class="grid">
+    <div><label class="f">Block name</label><input type="text" id="bName" required></div>
+    <div class="grid c2">
+      <div><label class="f">Day</label><select id="bDay"></select></div>
+      <div><label class="f">Starts at (runs until the next block)</label><input type="time" id="bTime" step="900" required></div>
+    </div>
+    <div class="grid c2">
+      <div><label class="f">Colour category</label><select id="bCat"></select></div>
+      <div><label class="f">Applies to</label><select id="bScope"></select></div>
+    </div>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:600;font-size:13px">
+      <input type="checkbox" id="bLock" style="width:18px;height:18px"> Non-negotiable (nothing gets booked over it)</label>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn danger ghost sm hide" id="bDelete" value="delete" type="submit" formnovalidate>Delete</button>
+    <div class="spacer"></div>
+    <button class="btn sm" value="cancel" formnovalidate>Cancel</button>
+    <button class="btn primary sm" value="save">Save</button>
+  </div>
+</form></dialog>
+
 <script>
 "use strict";
-const VER = "v1.13";
+const VER = "v1.14";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -768,8 +913,20 @@ const catById = id => S.cats.find(c=>c.id===id) || {name:'—',colour:'#8a94a3'}
 const profileFor = k => isWeekend(k) ? 'weekend' : 'weekday';
 const tpl = k => S.template[profileFor(k)];
 const tplOf = name => S.template[name];
-// An item can reference a slot in either template — carried items cross over.
-const slotById = id => S.template.weekday.slots.find(s=>s.id===id)
+/* ---------------- time blocks ----------------
+   A slot is a time block: it starts at its own time and runs until the next
+   one starts. Days run on their template's blocks until one is re-timed in the
+   week planner; from then on that day carries its own list (day.slots), so
+   changing one Tuesday never rewrites every other weekday. */
+function daySlots(k){
+  const d = S.days[k];
+  return (d && d.slots && d.slots.length) ? d.slots
+       : tplOf((d && d.profile) || profileFor(k)).slots;
+}
+// An item can reference a slot in either template — carried items cross over —
+// or one that only exists on its own day (pass that day's key to find it).
+const slotById = (id, k) => (k && daySlots(k).find(s=>s.id===id))
+                    || S.template.weekday.slots.find(s=>s.id===id)
                     || S.template.weekend.slots.find(s=>s.id===id);
 
 // Minutes since midnight, for lining slots up across the two templates.
@@ -777,16 +934,55 @@ function slotMins(s){
   const [h,m] = String(s && s.time || '').split(':').map(Number);
   return isNaN(h) ? 9999 : h*60 + (m||0);
 }
-// Moving between templates: land in the slot closest in time, never nowhere.
-function mapSlot(slotId, targetProfile){
-  const target = tplOf(targetProfile).slots;
-  if(!target.length) return null;
-  if(target.some(s=>s.id===slotId)) return slotId;
-  const from = slotById(slotId);
-  if(!from) return target[0].id;
+const byTime = slots => slots.slice().sort((a,b)=>slotMins(a)-slotMins(b));
+
+// Where does something from another list of blocks belong in this one? In the
+// block that covers the same time of day — never nowhere.
+function nearestIn(slots, slotId, from){
+  if(!slots.length) return null;
+  if(slots.some(s=>s.id===slotId)) return slotId;
+  from = from || slotById(slotId);
+  const sorted = byTime(slots);
+  if(!from) return sorted[0].id;
   const want = slotMins(from);
-  return target.reduce((best,s)=>
-    Math.abs(slotMins(s)-want) < Math.abs(slotMins(best)-want) ? s : best, target[0]).id;
+  let hit = sorted[0];
+  sorted.forEach(s=>{ if(slotMins(s) <= want) hit = s; });
+  return hit.id;
+}
+// Moving between templates (fromKey: the day the slot id was last seen on).
+function mapSlot(slotId, targetProfile, fromKey){
+  return nearestIn(tplOf(targetProfile).slots, slotId,
+                   fromKey ? daySlots(fromKey).find(s=>s.id===slotId) : null);
+}
+
+// A day as stretches of time: each block with the minutes it covers.
+function dayBlocks(k){
+  const sl = byTime(daySlots(k)).filter(s=>slotMins(s) < 1440);
+  return sl.map((s,i)=>({s, from:slotMins(s), to: i+1 < sl.length ? slotMins(sl[i+1]) : 1440}));
+}
+// A block's colour: its own category, else whatever its first activity uses.
+function slotColour(s, k){
+  if(s.cat && S.cats.some(c=>c.id===s.cat)) return catById(s.cat).colour;
+  const d = k && S.days[k];
+  const it = d ? d.items.find(i=>i.slotId===s.id)
+               : tplOf(profileFor(k || todayKey())).acts.find(a=>a.slotId===s.id);
+  return it ? catById(it.cat).colour : '#8a94a3';
+}
+const hm = m => (m/60|0) + 'h' + (m%60 ? ' ' + (m%60) + 'm' : '');
+// Cold calling is the number the day is built around: how much is planned,
+// and how much is left once booked calls have eaten into it.
+function coldMins(k){
+  const evs = (CAL && CAL.days && CAL.days[k]) || [];
+  let tot = 0, lost = 0;
+  dayBlocks(k).forEach(b=>{
+    if(!/cold\s*call/i.test(b.s.name||'')) return;
+    tot += b.to - b.from;
+    evs.forEach(e=>{
+      const a = hhmm(e.start); if(a < 0) return;
+      lost += Math.max(0, Math.min(a + (e.mins||0), b.to) - Math.max(a, b.from));
+    });
+  });
+  return {tot, net: Math.max(0, tot - lost)};
 }
 
 /* ---------------- day building ---------------- */
@@ -826,7 +1022,7 @@ function buildNextDay(fromKey){
       if(it.status === 'done') return;        // finished — nothing to carry
       if(willReturn(it,k)) return;            // already coming back via the template
       if(!willCarry(it, fromKey)) return;     // default off for habits, or dropped in the review
-      day.items.push({id:uid(), src:null, slotId:mapSlot(it.slotId, p), title:it.title,
+      day.items.push({id:uid(), src:null, slotId:mapSlot(it.slotId, p, fromKey), title:it.title,
                       cat:it.cat, min:it.min, rec:'manual', status:'pending',
                       carried:(it.carried||0)+1});
     });
@@ -853,14 +1049,17 @@ function ensureDay(k){
 }
 
 /* ---------------- tabs ---------------- */
-const tabs = ['today','review','clients','template','history'];
+const tabs = ['today','week','review','clients','template','history'];
 function showTab(t){
+  const was = document.querySelector('[data-tab][aria-selected="true"]');
+  if(t==='week' && (!was || was.dataset.tab !== 'week')) wkJump = true;
   tabs.forEach(x=>{
     document.getElementById('tab-'+x).classList.toggle('hide', x!==t);
     const b = document.querySelector(`[data-tab="${x}"]`);
     b.setAttribute('aria-selected', String(x===t));
   });
   if(t==='today') renderDay();
+  if(t==='week') renderWeek();
   if(t==='review') renderReview();
   if(t==='clients'){ renderClients(); pullHooks().then(ch=>{ if(ch) renderClients(); }); }
   if(t==='template'){ renderTemplate(); paintSyncInputs(); }
@@ -876,26 +1075,30 @@ function renderDay(){
   const day = ensureDay(k);
   document.getElementById('dayLabel').firstChild.nodeValue = pretty(k);
   const gen = day.generated==='rolled' ? 'adapted from the day before' : 'built from template';
+  const cc = coldMins(k);
   document.getElementById('dayMeta').textContent =
     (k===todayKey() ? 'Today · ' : '') + gen +
-    ' · ' + (profileFor(k)==='weekend' ? 'weekend template' : 'weekday template');
+    ' · ' + (day.slots && day.slots.length ? 're-timed for this day'
+            : profileFor(k)==='weekend' ? 'weekend template' : 'weekday template') +
+    (cc.tot ? ' · cold calling ' + hm(cc.net) + (cc.net < cc.tot ? ' after bookings' : '') : '');
 
   const done = day.items.filter(i=>i.status==='done').length;
   const tot = day.items.length || 1;
   document.getElementById('prog').style.width = Math.round(done/tot*100)+'%';
 
-  const slots = tplOf(day.profile || profileFor(k)).slots;
+  const slots = byTime(daySlots(k));
   // Nothing may go missing: if a slot was deleted or the day changed template,
-  // pull orphaned items into the nearest surviving slot rather than dropping them.
+  // pull orphaned items into the block covering that time rather than dropping them.
   let repaired = false;
   day.items.forEach(it=>{
     if(!slots.some(s=>s.id===it.slotId)){
-      it.slotId = mapSlot(it.slotId, day.profile || profileFor(k));
+      it.slotId = nearestIn(slots, it.slotId);
       repaired = true;
     }
   });
   if(repaired) save();
 
+  renderHabits(day);
   const wrap = document.getElementById('daySlots');
   wrap.innerHTML = '';
   slots.forEach((sl,si)=>{
@@ -905,9 +1108,12 @@ function renderDay(){
     // Which bookings land inside this block, and how much of it they take.
     const calls = callsInSlot(k, slots, si);
     const booked = calls.reduce((n,e)=>n+(e.mins||0),0);
+    const nextT = si + 1 < slots.length && slotMins(slots[si+1]) < 1440 ? slots[si+1].time : '';
+    if(sl.cat) box.style.borderLeft = '4px solid ' + slotColour(sl, k);
     box.innerHTML = `<h3>${esc(sl.name)}` +
+      (sl.lock ? `<span class="lockchip">🔒 non-negotiable</span>` : '') +
       (booked ? `<span class="booked">${calls.length} booked · ${booked}m</span>` : '') +
-      `<span class="time">${sl.time||''}</span></h3>`;
+      `<span class="time">${sl.time ? fmt12(sl.time) + (nextT ? ' – ' + fmt12(nextT) : '') : ''}</span></h3>`;
     calls.forEach(e=>{
       const t = CAL_TYPES[e.type] || CAL_TYPES.other;
       const c = document.createElement('div');
@@ -929,6 +1135,49 @@ function renderDay(){
     wrap.appendChild(box);
   });
   renderCalRail();
+}
+
+/* ---------------- non-negotiables ----------------
+   Habits that hold every day regardless of how the day is laid out. They live
+   with the template (so both devices agree on the list) and each day records
+   what was kept: a tick, or a running count for the ones with a target. */
+const habitsFor = k => (S.template.habits || []).filter(h => !(h.weekdays && isWeekend(k)));
+const habitKept = (day, h) => {
+  const v = day && day.habits ? day.habits[h.id] : null;
+  return h.target ? (+v || 0) >= h.target : !!v;
+};
+function renderHabits(day){
+  const box = document.getElementById('habitBox');
+  const hs = habitsFor(day.date);
+  box.classList.toggle('hide', !hs.length);
+  if(!hs.length) return;
+  const kept = hs.filter(h=>habitKept(day,h)).length;
+  box.innerHTML = `<h3>🔒 Non-negotiables<span>${kept}/${hs.length} kept</span></h3><div class="hl"></div>`;
+  const hl = box.querySelector('.hl');
+  hs.forEach(h=>{
+    const on = habitKept(day,h);
+    const el = document.createElement('div');
+    el.className = 'item habit' + (on ? ' done' : '');
+    el.style.setProperty('--c', 'var(--gold)');
+    el.innerHTML = `<button class="tick ${on?'on':''}" title="Kept">${on?'✓':''}</button>
+      <span class="title">${esc(h.title)}</span>` +
+      (h.target ? `<input type="number" min="0" step="1" inputmode="numeric" placeholder="0"
+          value="${(day.habits && day.habits[h.id]) || ''}"><span class="meta">/ ${h.target}</span>` : '');
+    el.querySelector('.tick').onclick = ()=>{
+      day.habits = day.habits || {};
+      if(h.target) day.habits[h.id] = on ? 0 : h.target; else day.habits[h.id] = !on;
+      logEvent('habit.tick', `${on?'Unticked':'Kept'} "${h.title}" — ${pretty(day.date)}`);
+      save(); renderDay();
+    };
+    const num = el.querySelector('input');
+    if(num) num.onchange = e=>{
+      day.habits = day.habits || {};
+      day.habits[h.id] = Math.max(0, parseInt(e.target.value, 10) || 0);
+      logEvent('habit.count', `"${h.title}": ${day.habits[h.id]} of ${h.target} — ${pretty(day.date)}`);
+      save(); renderDay();
+    };
+    hl.appendChild(el);
+  });
 }
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -1008,6 +1257,7 @@ function loadCalendar(){
 // Bookings show inside the blocks as well as in the rail, so a late-arriving
 // calendar has to redraw the day, not just the sidebar.
 function afterCal(){
+  if(!document.getElementById('tab-week').classList.contains('hide')) renderWeek();
   if(document.getElementById('tab-today').classList.contains('hide')) renderCalRail();
   else renderDay();
 }
@@ -1131,7 +1381,7 @@ function makeDraggable(el, it, day){
           it.slotId = target;
           // move to end of that slot's ordering
           day.items = day.items.filter(x=>x.id!==it.id).concat([it]);
-          logEvent('day.move', `Moved "${it.title}" to ${slotById(target)?.name || 'another slot'} on ${pretty(day.date)}`);
+          logEvent('day.move', `Moved "${it.title}" to ${slotById(target, day.date)?.name || 'another slot'} on ${pretty(day.date)}`);
           save();
         }
         renderDay();
@@ -1153,7 +1403,8 @@ function fillSelect(sel, opts, val){
   sel.innerHTML = opts.map(o=>`<option value="${o.v}">${esc(o.t)}</option>`).join('');
   if(val) sel.value = val;
 }
-const slotOpts = (prof) => tplOf(prof || EDIT_PROFILE).slots.map(s=>({v:s.id,t:s.name}));
+const slotLabel = s => (s.time ? fmt12(s.time) + ' · ' : '') + s.name;
+const slotOpts = (prof) => tplOf(prof || EDIT_PROFILE).slots.map(s=>({v:s.id,t:slotLabel(s)}));
 const catOpts  = () => S.cats.map(c=>({v:c.id,t:c.name}));
 
 function openItemDialog(it, day, mode){
@@ -1161,8 +1412,13 @@ function openItemDialog(it, day, mode){
   document.getElementById('dlgTitle').textContent = it ? 'Edit activity' : 'Add activity';
   const dlgProf = (mode==='template') ? EDIT_PROFILE
                 : (day ? (day.profile || profileFor(day.date)) : EDIT_PROFILE);
-  const dlgSlots = tplOf(dlgProf).slots;
-  fillSelect(document.getElementById('dSlot'), slotOpts(dlgProf), it?it.slotId:dlgSlots[0].id);
+  // A day that's been re-timed offers its own blocks, not the template's.
+  const dlgSlots = (mode!=='template' && day) ? byTime(daySlots(day.date)) : tplOf(dlgProf).slots;
+  fillSelect(document.getElementById('dSlot'), dlgSlots.map(s=>({v:s.id,t:slotLabel(s)})),
+             it ? it.slotId
+                : (mode!=='template' && day && day.date===todayKey())
+                  ? nearestIn(dlgSlots, null, {time: pad(new Date().getHours())+':'+pad(new Date().getMinutes())})
+                  : dlgSlots[0].id);
   fillSelect(document.getElementById('dCat'),  catOpts(),  it?it.cat:S.cats[0].id);
   document.getElementById('dTitle').value = it?it.title:'';
   document.getElementById('dMin').value = it&&it.min?it.min:'';
@@ -1224,7 +1480,7 @@ function renderReview(){
         <input type="checkbox" ${on?'checked':''} ${auto?'disabled':''} style="width:auto">
         <span class="swatch" style="background:${catById(it.cat).colour}"></span>
         <span style="flex:1">${esc(it.title)}</span>
-        <span class="pill">${auto ? 'returns anyway' : slotById(it.slotId)?.name || ''}</span>`;
+        <span class="pill">${auto ? 'returns anyway' : esc(slotById(it.slotId, k)?.name || '')}</span>`;
       row.querySelector('input').onchange = e=>{ flags[it.id] = e.target.checked; save(); };
       cl.appendChild(row);
     });
@@ -1287,7 +1543,10 @@ document.getElementById('dayNote').oninput = e=>{ S.note[S.current] = e.target.v
 document.getElementById('genTomorrow').onclick = ()=>{
   const k = S.current, nk = shift(k,1);
   if(S.days[nk] && !confirm(`${pretty(nk)} already has a plan. Rebuild it from today?`)) return;
+  // Blocks already re-timed for tomorrow in the week planner survive the rebuild.
+  const keepSlots = S.days[nk] && S.days[nk].slots;
   S.days[nk] = buildNextDay(k);
+  if(keepSlots && keepSlots.length) S.days[nk].slots = keepSlots;
   S.days[k].reviewed = true;
   S.current = nk;
   logEvent('day.generate', `Generated the plan for ${pretty(nk)} from ${pretty(k)}'s review`);
@@ -1620,13 +1879,25 @@ function renderTemplate(){
     hd.className = 'hd';
     hd.innerHTML = `
       <input type="text" value="${esc(sl.name)}" style="flex:1">
-      <input type="time" value="${sl.time||''}">
+      <input type="time" value="${sl.time||''}" step="900">
+      <select title="Block colour">${[{v:'',t:'No colour'}].concat(catOpts()).map(o=>
+        `<option value="${o.v}" ${o.v===(sl.cat||'')?'selected':''}>${esc(o.t)}</option>`).join('')}</select>
+      <button class="btn sm ghost lockbtn" title="Non-negotiable" aria-pressed="${sl.lock?'true':'false'}">🔒</button>
       <button class="btn sm ghost" title="Move up" ${idx===0?'disabled':''}>↑</button>
       <button class="btn sm ghost" title="Move down" ${idx===T.slots.length-1?'disabled':''}>↓</button>
       <button class="btn sm ghost danger" title="Delete slot">✕</button>`;
-    const [nameI, timeI, up, down, del] = hd.querySelectorAll('input,button');
+    const [nameI, timeI, lockB, up, down, del] = hd.querySelectorAll('input,button');
     nameI.oninput = e=>{ sl.name = e.target.value; save(); };
     timeI.oninput = e=>{ sl.time = e.target.value; save(); };
+    hd.querySelector('select').onchange = e=>{
+      if(e.target.value) sl.cat = e.target.value; else delete sl.cat;
+      save();
+    };
+    lockB.onclick = ()=>{
+      if(sl.lock) delete sl.lock; else sl.lock = true;
+      logEvent('template.slot', `${sl.lock?'Locked':'Unlocked'} "${sl.name}" in the ${EDIT_PROFILE} template`);
+      save(); renderTemplate();
+    };
     up.onclick = ()=>{ const a=T.slots; [a[idx-1],a[idx]]=[a[idx],a[idx-1]]; save(); renderTemplate(); };
     down.onclick = ()=>{ const a=T.slots; [a[idx+1],a[idx]]=[a[idx],a[idx+1]]; save(); renderTemplate(); };
     del.onclick = ()=>{
@@ -1666,6 +1937,25 @@ function renderTemplate(){
     };
     box.appendChild(add);
     wrap.appendChild(box);
+  });
+
+  const hw = document.getElementById('habitEdit');
+  hw.innerHTML = '';
+  const habits = S.template.habits = S.template.habits || [];
+  if(!habits.length) hw.innerHTML = `<div class="sub" style="margin:8px 0">None yet.</div>`;
+  habits.forEach((h,i)=>{
+    const row = document.createElement('div');
+    row.className = 'habitrow';
+    row.innerHTML = `<input type="text" value="${esc(h.title)}">
+      <input type="number" min="0" step="1" placeholder="target" value="${h.target||''}" title="Target count (optional)">
+      <label><input type="checkbox" ${h.weekdays?'checked':''} style="width:auto"> weekdays only</label>
+      <button class="btn sm ghost danger">✕</button>`;
+    const [ti, tg, wk, del] = row.querySelectorAll('input,button');
+    ti.oninput = e=>{ h.title = e.target.value; save(); };
+    tg.oninput = e=>{ const n = parseInt(e.target.value,10); if(n > 0) h.target = n; else delete h.target; save(); };
+    wk.onchange = e=>{ if(e.target.checked) h.weekdays = true; else delete h.weekdays; save(); };
+    del.onclick = ()=>{ habits.splice(i,1); logEvent('habit.delete', `Removed the non-negotiable "${h.title}"`); save(); renderTemplate(); };
+    hw.appendChild(row);
   });
 
   const cw = document.getElementById('cats');
@@ -1720,10 +2010,228 @@ document.getElementById('copyProfile').onclick = ()=>{
   EDIT_PROFILE = to;
   renderTemplate();
 };
+document.getElementById('addHabit').onclick = ()=>{
+  (S.template.habits = S.template.habits || []).push({id:uid(), title:'New non-negotiable'});
+  save(); renderTemplate();
+};
 document.getElementById('addCat').onclick = ()=>{
   S.cats.push({id:uid(), name:'New category', colour:'#6b7280'});
   save(); renderTemplate();
 };
+
+/* ---------------- WEEK ----------------
+   Read-only until a block is tapped: laying a week out must not create its
+   days early, because a day built before its yesterday is reviewed would miss
+   that review's carry-overs. Days that don't exist yet preview their template. */
+let WK = null;            // Monday of the week on show
+let wkJump = true;        // scroll to the working day on the next draw
+const mondayOf = k => { const d = parseKey(k); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return keyOf(d); };
+const rh = n => `calc(var(--rh)*${+(n/30).toFixed(3)})`;
+
+function renderWeek(){
+  if(!WK) WK = mondayOf(todayKey());
+  const days = [...Array(7)].map((_,i)=>shift(WK,i));
+  const tk = todayKey();
+  const a = parseKey(days[0]), z = parseKey(days[6]);
+  document.getElementById('wkLabel').firstChild.nodeValue =
+    `Week of ${a.getDate()} ${MON[a.getMonth()]} – ${z.getDate()} ${MON[z.getMonth()]} ${z.getFullYear()}`;
+  const ccWeek = days.reduce((n,k)=>n + coldMins(k).net, 0);
+  const evWeek = days.reduce((n,k)=>n + (((CAL && CAL.days && CAL.days[k]) || []).length), 0);
+  document.getElementById('wkMeta').textContent =
+    (ccWeek ? 'cold calling ' + hm(ccWeek) + ' planned' : 'no cold calling planned') +
+    ' · ' + (evWeek ? evWeek + ' booked' : 'no bookings') +
+    (CAL ? '' : ' (calendar not synced yet)');
+
+  const sc = document.getElementById('wkScroll');
+  const keepTop = sc.scrollTop, keepLeft = sc.scrollLeft;
+  const grid = document.getElementById('wkGrid');
+  grid.innerHTML = '';
+
+  const corner = document.createElement('div'); corner.className = 'wkcorner';
+  grid.appendChild(corner);
+  days.forEach(k=>{
+    const d = parseKey(k), cc = coldMins(k);
+    const evs = (CAL && CAL.days && CAL.days[k]) || [];
+    const h = document.createElement('button');
+    h.type = 'button';
+    h.className = 'wkhead' + (k===tk ? ' today' : '');
+    h.title = 'Open ' + pretty(k);
+    h.innerHTML = `${DOW[d.getDay()].slice(0,3)} ${d.getDate()}<small>` +
+      ((cc.tot ? 'calls ' + hm(cc.net) : 'no calling') + (evs.length ? ' · ' + evs.length + ' booked' : '') +
+       (S.days[k] && S.days[k].habits && habitsFor(k).length
+          ? ' · 🔒' + habitsFor(k).filter(x=>habitKept(S.days[k],x)).length + '/' + habitsFor(k).length : '')) + `</small>`;
+    h.onclick = ()=>{ S.current = k; save(); showTab('today'); };
+    grid.appendChild(h);
+  });
+
+  const gut = document.createElement('div'); gut.className = 'wkgut';
+  for(let hr = 0; hr < 24; hr++){
+    const sp = document.createElement('span');
+    sp.textContent = (hr%12 || 12) + (hr < 12 ? 'am' : 'pm');
+    sp.style.top = rh(hr*60);
+    if(hr === 0) sp.className = 'first';
+    gut.appendChild(sp);
+  }
+  grid.appendChild(gut);
+
+  days.forEach(k=>{
+    const col = document.createElement('div');
+    col.className = 'wkcol' + (k===tk ? ' today' : '');
+    col.dataset.k = k;
+    const blocks = dayBlocks(k);
+    const day = S.days[k];
+
+    // Midnight until the first block belongs to whatever yesterday ended on.
+    if(blocks.length && blocks[0].from > 0){
+      const prev = dayBlocks(shift(k,-1)).pop();
+      const w = document.createElement('div');
+      w.className = 'wkb wrap';
+      w.style.cssText = `top:0;height:calc(${rh(blocks[0].from)} - 1px);--c:${prev ? slotColour(prev.s, shift(k,-1)) : '#8a94a3'}`;
+      w.innerHTML = `<b>${esc(prev ? prev.s.name : '')}</b>`;
+      col.appendChild(w);
+    }
+
+    blocks.forEach(b=>{
+      const len = b.to - b.from;
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'wkb' + (b.s.lock ? ' lock' : '') + (len < 30 ? ' tiny' : '') + (len >= 90 ? ' tall' : '');
+      el.style.cssText = `top:${rh(b.from)};height:calc(${rh(len)} - 1px);--c:${slotColour(b.s, k)}`;
+      const its = day ? day.items.filter(i=>i.slotId===b.s.id) : [];
+      const done = its.filter(i=>i.status==='done').length;
+      const range = fmt12(b.s.time) + ' – ' + (b.to >= 1440 ? '12:00am' : fmt12(pad(b.to/60|0)+':'+pad(b.to%60)));
+      el.title = `${b.s.name} · ${range}` + (b.s.lock ? ' · non-negotiable' : '');
+      el.innerHTML = `<b>${b.s.lock ? '🔒 ' : ''}${esc(b.s.name)}</b>` +
+        (len >= 60 ? `<small>${range}${its.length ? ' · ' + done + '/' + its.length + ' done' : ''}</small>` : '');
+      el.onclick = ()=> openBlockDialog(k, b.s.id);
+      col.appendChild(el);
+    });
+
+    // Bookings sit on top at their real time; one landing on a non-negotiable is flagged.
+    ((CAL && CAL.days && CAL.days[k]) || []).forEach(e=>{
+      const from = hhmm(e.start); if(from < 0) return;
+      const len = Math.max(15, e.mins || 30), to = from + len;
+      const t = CAL_TYPES[e.type] || CAL_TYPES.other;
+      const clash = blocks.some(b=> b.s.lock && from < b.to && to > b.from);
+      const el = document.createElement(e.link ? 'a' : 'div');
+      if(e.link){ el.href = e.link; el.target = '_blank'; el.rel = 'noopener'; }
+      el.className = 'wke' + (clash ? ' clash' : '');
+      el.style.cssText = `top:${rh(from)};height:calc(${rh(len)} - 1px);--c:${t.colour}`;
+      el.title = `${fmt12(e.start)} · ${e.title} · ${t.label}` + (clash ? ' — lands on a non-negotiable' : '');
+      el.textContent = (clash ? '⚠ ' : '') + fmt12(e.start) + ' ' + e.title;
+      col.appendChild(el);
+    });
+
+    if(k === tk){
+      const n = new Date(), line = document.createElement('div');
+      line.className = 'wknow';
+      line.style.top = rh(n.getHours()*60 + n.getMinutes());
+      col.appendChild(line);
+    }
+    grid.appendChild(col);
+  });
+
+  const used = new Set();
+  days.forEach(k=> dayBlocks(k).forEach(b=>{ if(b.s.cat) used.add(b.s.cat); }));
+  document.getElementById('wkLegend').innerHTML =
+    S.cats.filter(c=>used.has(c.id)).map(c=>`<span><i style="background:${c.colour}"></i>${esc(c.name)}</span>`).join('') +
+    `<span><i style="box-shadow:inset 0 0 0 2px var(--gold)"></i>Non-negotiable</span>`;
+
+  if(wkJump){
+    wkJump = false;
+    // Land on the start of the working day, with today's column in view.
+    const rowPx = parseFloat(getComputedStyle(grid).getPropertyValue('--rh')) || 24;
+    sc.scrollTop = rowPx * 10 - 10;                              // 5:00am, label clear of the header
+    const col = grid.querySelector('.wkcol.today');
+    sc.scrollLeft = col ? Math.max(0, col.offsetLeft - 56) : 0;
+  }else{
+    sc.scrollTop = keepTop; sc.scrollLeft = keepLeft;
+  }
+}
+document.getElementById('wkPrev').onclick = ()=>{ WK = shift(WK,-7); wkJump = true; renderWeek(); };
+document.getElementById('wkNext').onclick = ()=>{ WK = shift(WK, 7); wkJump = true; renderWeek(); };
+document.getElementById('wkThis').onclick = ()=>{ WK = mondayOf(todayKey()); wkJump = true; renderWeek(); };
+document.getElementById('wkAdd').onclick  = ()=> openBlockDialog(null, null);
+// The Mac app's web view has no print of its own, so it hands the job to the app.
+document.getElementById('wkPrint').onclick = ()=>{
+  const h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nwPrint;
+  if(h) h.postMessage('week'); else window.print();
+};
+
+/* ----- block editor ----- */
+const blkDlg = document.getElementById('blkDlg');
+let blkCtx = null;
+function openBlockDialog(k, slotId){
+  if(!WK) WK = mondayOf(todayKey());
+  const days = [...Array(7)].map((_,i)=>shift(WK,i));
+  if(!k) k = days.includes(todayKey()) ? todayKey() : days[0];
+  const sl = slotId ? daySlots(k).find(x=>x.id===slotId) : null;
+  blkCtx = {k, id: sl ? sl.id : null};
+  document.getElementById('bTitle').textContent = sl ? 'Edit time block' : 'Add time block';
+  const dSel = document.getElementById('bDay');
+  fillSelect(dSel, days.map(d=>({v:d, t:pretty(d)})), k);
+  dSel.disabled = !!sl;
+  document.getElementById('bName').value = sl ? sl.name : '';
+  document.getElementById('bTime').value = sl ? (sl.time||'') : '09:00';
+  const cSel = document.getElementById('bCat');
+  fillSelect(cSel, [{v:'',t:'No colour'}].concat(catOpts()));
+  cSel.value = (sl && sl.cat) || '';
+  document.getElementById('bLock').checked = !!(sl && sl.lock);
+  const paintScope = ()=>{
+    const kk = sl ? k : dSel.value;
+    fillSelect(document.getElementById('bScope'), [
+      {v:'day', t:'Just ' + pretty(kk)},
+      {v:'tpl', t:'Every ' + (profileFor(kk)==='weekend' ? 'weekend day' : 'weekday') + ' (base template)'}]);
+  };
+  paintScope();
+  dSel.onchange = paintScope;
+  document.getElementById('bDelete').classList.toggle('hide', !sl);
+  blkDlg.showModal();
+}
+blkDlg.addEventListener('close', ()=>{
+  const v = blkDlg.returnValue, ctx = blkCtx;
+  blkCtx = null;
+  if(!ctx || (v !== 'save' && v !== 'delete')) return;
+  const k     = ctx.id ? ctx.k : document.getElementById('bDay').value;
+  const scope = document.getElementById('bScope').value;
+  const name  = document.getElementById('bName').value.trim();
+  const time  = document.getElementById('bTime').value;
+  const cat   = document.getElementById('bCat').value;
+  const lock  = document.getElementById('bLock').checked;
+  if(v === 'save' && (!name || !time)) return;
+  const id = ctx.id || uid();
+
+  const apply = list=>{
+    const at = list.findIndex(x=>x.id===id);
+    if(v === 'delete'){
+      if(at < 0 || list.length < 2) return;
+      list.splice(at, 1);
+      return;
+    }
+    const s = at < 0 ? (list.push({id}), list[list.length-1]) : list[at];
+    s.name = name; s.time = time;
+    if(cat) s.cat = cat; else delete s.cat;
+    if(lock) s.lock = true; else delete s.lock;
+  };
+
+  const day = scope === 'day' ? ensureDay(k) : S.days[k];
+  const prof = (day && day.profile) || profileFor(k);
+  if(scope === 'tpl'){
+    const T = tplOf(prof), gone = T.slots.find(x=>x.id===id);
+    apply(T.slots);
+    // A template block that's deleted hands its routine to the block now covering that time.
+    if(v === 'delete' && gone)
+      T.acts.forEach(a=>{ if(a.slotId===id) a.slotId = nearestIn(T.slots, id, gone); });
+    if(day && day.slots && day.slots.length) apply(day.slots);   // keep what's on screen in step
+  }else{
+    // First change to a day: it takes its own copy of the template's blocks.
+    if(!day.slots || !day.slots.length) day.slots = tplOf(prof).slots.map(s=>({...s}));
+    apply(day.slots);
+  }
+  logEvent('plan.block', (v==='delete' ? `Removed the "${name || 'block'}" block` : `Set "${name}" from ${fmt12(time)}`) +
+    (scope==='tpl' ? ` in the ${prof} template` : ` on ${pretty(k)}`));
+  save(); renderWeek();
+});
 
 /* ---------------- HISTORY ---------------- */
 function renderHistory(){
@@ -1882,6 +2390,9 @@ setInterval(()=>{
 
   document.addEventListener('touchstart', e=>{
     if(busy || window.scrollY > 0 || e.touches.length !== 1){ y0 = null; return; }
+    // Inside the week grid a downward drag scrolls the grid until it's at its top.
+    const inner = e.target.closest && e.target.closest('.wkscroll');
+    if(inner && inner.scrollTop > 0){ y0 = null; return; }
     x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
     pull = 0; active = false;
   }, {passive:true});
@@ -1908,7 +2419,7 @@ setInterval(()=>{
     y0 = null; active = false;
     if(!go){ bar.classList.remove('show'); bar.style.transform = ''; return; }
     busy = true;
-    bar.textContent = 'refreshing…';
+    bar.innerHTML = '<i class="spin"></i>refreshing…';
     await hardRefresh();
   });
 })();
@@ -1921,10 +2432,17 @@ if('serviceWorker' in navigator){
 }
 document.getElementById('ver').textContent = VER;
 if(!S.days[todayKey()] && Object.keys(S.days).length===0) S.current = todayKey();
+// The first open on a new day lands on that day, not wherever the app was left.
+try{
+  if(localStorage.getItem('nwr-lastopen') !== todayKey()){
+    S.current = todayKey();
+    localStorage.setItem('nwr-lastopen', todayKey());
+  }
+}catch(e){}
 loadCalendar();
 resetShadow();          // whatever loaded from disk is the baseline, not an edit
 if(syncOn()) syncNow(false);
-showTab('today');
+showTab(tabs.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'today');
 save();
 </script>
 </body>
