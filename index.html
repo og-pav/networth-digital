@@ -597,7 +597,7 @@
 
 <script>
 "use strict";
-const VER = "v1.14";
+const VER = "v1.15";
 const KEY = "daily-routine-v1";
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -1043,6 +1043,11 @@ function ensureDay(k){
   if(!S.days[k]){
     const prev = S.days[shift(k,-1)];
     S.days[k] = prev ? buildNextDay(shift(k,-1)) : buildFromTemplate(k);
+    // Built by the app, not edited by anyone: stamp it as older than any real
+    // change. Otherwise simply opening the app on a new day — before the first
+    // sync has answered — would outrank a plan for that day made on another
+    // device (or loaded from outside) and overwrite it.
+    S.days[k].updated = 1;
     save();
   }
   return S.days[k];
